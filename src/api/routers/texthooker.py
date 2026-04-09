@@ -3,6 +3,8 @@ from api.core.text_analysis.utils import Morpheme
 from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse
 
+import re
+
 router = APIRouter()
 
 morphemes = []
@@ -26,8 +28,19 @@ test_lines = [
 ]
 
 analyzer = get_analyzer()
-mock_session_lines = [list(analyzer.parse(line)) for line in test_lines]
+mock_session_lines = [{"id": i, "tokens": list(analyzer.parse(line))} for i, line in enumerate(test_lines)]
 
+#-------------------------------------------------------------------------------
+# utility functions to add whitespace to the new line in order to make
+# reconstructing text input in the frontend easier after tokenization with spacy
+
+def increase_whitespace(match: re.Match) -> str:
+    return match.group(0) + " "
+
+def correct_line_whitespace(line: str) -> str:
+    return re.sub(r" +", increase_whitespace, line)
+
+#-------------------------------------------------------------------------------
 
 @router.get("/last_session", response_model=LastSessionResponse)
 def last_session():
@@ -43,13 +56,15 @@ def add_new_line(line: LineCreate):
     tokens = []
     status_map = {}
 
-    for tok in analyzer.parse(line.text):
+    for tok in analyzer.parse(correct_line_whitespace(line.text)):
         tokens.append(tok)
         if tok.inflection in mock_session_map:
             status_map[tok.inflection] = mock_session_map[tok.inflection]
 
-    mock_session_lines.append(tokens)
-    return {"tokens": tokens, "status_map": status_map}
+    tmp_id = mock_session_lines[-1]["id"]+1 if mock_session_lines else 1
+    mock_session_lines.append({"id": tmp_id, "tokens": tokens})
+    return {"id": tmp_id, "tokens": tokens, "status_map": status_map}
 
 # @router.put("/update_line") or patch
 # @router.delete("/delete_line")
+# @router.delete("/clear_lines")
