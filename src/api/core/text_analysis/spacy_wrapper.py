@@ -2,16 +2,23 @@ import spacy
 from spacy.cli import download
 from api.schemas.core import Morpheme
 
+import threading
+
 analyzer: "SpacyAnalyzer | None" = None
 
 
 class SpacyAnalyzer:
+    # Japanese Tokenizer is not thread-safe
+    # TODO: Test creating tokenizers for each thread
+    LOCK: threading.Lock = threading.Lock()
+
     def __init__(self, model_name:str) -> None:
         self.model_name = model_name
         self.nlp = spacy.load(model_name)
 
     def parse(self, text:str):
-        doc = self.nlp(text)
+        with SpacyAnalyzer.LOCK:
+            doc = self.nlp(text)
         for token in doc:
             yield Morpheme(
                 lemma=token.lemma_,
