@@ -1,25 +1,21 @@
 <script lang="ts">
-    let { line, status_map } = $props()
-    import { tick } from 'svelte';
+    let { line, status_map, delete_func } = $props()
 
-	$effect.pre(() => {
-		console.log('the component is about to update');
-		tick().then(() => {
-			console.log(`${line[0].inflection} just updated`);
-		});
-	});
 </script>
 
-<p>
-    {#each line as word}
-        {#if word.inflection in status_map}
-            <span class="{status_map[word.inflection]}">{word.inflection}</span>
-        {:else }
-            {word.inflection}
-        {/if}
-
-    {/each}
-</p>
+<div class="relative flex items-center">
+    <p class="my-1 py-1 px-5 text-[22px]">
+        {#each line.tokens as word}
+            {#if word.inflection in status_map}
+                <span class="relative status-underline {status_map[word.inflection]}">{word.inflection}</span>
+            {:else }
+                {word.inflection}
+            {/if}
+    
+        {/each}
+    </p>
+    <button onclick={delete_func} class="mr-4 ml-auto hover:text-sky-700 active:text-sky-500 hover:cursor-pointer">X</button>
+</div>
 
 <style>
 
