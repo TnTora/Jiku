@@ -24,10 +24,10 @@ async function processNewLine(new_line: string) {
             body: JSON.stringify({text: new_line})
         });
 
-        let { tokens, line_status_map } = await res.json();
+        let { id, tokens, line_status_map } = await res.json();
         // console.log(tokens);
         status_map = {...status_map, ...line_status_map};
-        return tokens;
+        return {id, tokens};
     } catch (error) {
         console.error("Error fetching new line: ", error);
         errors.push({
@@ -42,11 +42,15 @@ async function processNewLine(new_line: string) {
 function addNewLine(new_line: string) {
     let preprocessed_line = new_line.replaceAll("\n", " ");
     // console.log(preprocessed_line);
-    new_lines.push(
-        {
-            raw: preprocessed_line,
-            line: processNewLine(preprocessed_line),
-        })
+    let tmp = {
+        id: -1,
+        raw: preprocessed_line,
+        line: processNewLine(preprocessed_line),
+    };
+    new_lines.push(tmp);
+    tmp.line.then((line) => {
+        tmp.id = line.id;
+    });
 }
 
 function toggleWebSocket() {
@@ -85,7 +89,7 @@ function toggleWebSocket() {
 
 <TopBar {toggleWebSocket} {ws_connected} />
 
-<div class="relative top-10 {vertical? "vert-rl": ""}">
+<div class="relative pt-10 w-full h-full overflow-scroll {vertical? "vert-rl": ""}">
     <!-- last session lines -->
     {#each lines as line}
         <TexthookerLine {line} {status_map} delete_func={() => { lines = lines.filter( e => e.id !== line.id)}} />
@@ -96,7 +100,7 @@ function toggleWebSocket() {
         {#await line.line}
             <p class="my-1 py-1 px-5 text-[22px]">{line.raw}</p>
         {:then line} 
-            <TexthookerLine {line} {status_map} delete_func={() => { new_lines = new_lines.filter( e => e.line.id !== line.id)}} />
+            <TexthookerLine {line} {status_map} delete_func={ () => { new_lines = new_lines.filter( e => e.id !== line.id )} }/>
         {/await}
     {/each}
 </div>
