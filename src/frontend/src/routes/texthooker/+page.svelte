@@ -1,7 +1,17 @@
 <script lang="ts">
 import { getContext } from "svelte";
+import { setTextHookerOptionsContext } from "./context.js";
 import TexthookerLine from "$lib/components/TexthookerLine.svelte";
 import TopBar from "./TopBar.svelte";
+import OptionPanel from "./OptionPanel.svelte";
+
+// interface TextHookerOptions {
+//     websocket_url?: string,
+//     font?: string,
+//     font_size?: number,
+//     line_space?: number,
+//     vertical: boolean,
+// }
 
 let { data } = $props();
 let lines = $state(data.lines);
@@ -9,7 +19,16 @@ let status_map = $state(data.status_map);
 let new_lines: any[] = $state([]);
 let ws: WebSocket | null = null;
 let ws_connected = $state(false);
-let vertical = $state(true);
+
+let options = $state({
+    websocket_url: "ws://localhost:6677",
+    font_size: 22,
+    vertical: false,
+});
+
+setTextHookerOptionsContext(options);
+
+let show_options = $state(false);
 
 const errors = getContext("errors");
 
@@ -119,9 +138,13 @@ function toggleWebSocket() {
 }
 </script>
 
-<TopBar {toggleWebSocket} {ws_connected} />
+<TopBar {toggleWebSocket} {ws_connected} toggleOptions={() => {show_options = !show_options}}/>
 
-<div bind:this={text_container} class="relative pt-10 pb-5 w-full h-screen overflow-scroll {vertical? "vert-rl pl-5 pr-2": ""}">
+{#if show_options}
+    <OptionPanel />
+{/if}
+
+<div bind:this={text_container} class="relative pt-10 pb-5 w-full h-screen overflow-scroll {options.vertical? "vert-rl pl-5 pr-2": ""}">
     <!-- last session lines -->
     {#each lines as line}
         <TexthookerLine {line} {status_map} delete_func={() => { lines = lines.filter( e => e.id !== line.id)}} />

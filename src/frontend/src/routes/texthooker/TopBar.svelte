@@ -1,5 +1,5 @@
 <script lang="ts">
-    let { toggleWebSocket, ws_connected } = $props();
+    let { toggleWebSocket, ws_connected, toggleOptions } = $props();
     let ws_conn_color = $derived(ws_connected? "text-green-500": "text-red-500");
     let btn_shared_classes = "mr-3 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 
@@ -9,7 +9,7 @@
     <button class="{btn_shared_classes} {ws_conn_color}" onclick={toggleWebSocket} >WS</button>
     <button class="{btn_shared_classes}">Delete last line </button>
     <button class="{btn_shared_classes}">Clear all lines </button>
-    <button class="{btn_shared_classes}">Options</button>
+    <button class="{btn_shared_classes}" onclick={toggleOptions}>Options</button>
 </div>
 
 <style>

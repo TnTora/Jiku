@@ -1,10 +1,12 @@
 <script lang="ts">
+    import { getTextHookerOptionsContext } from "../../routes/texthooker/context";
     let { line, status_map, delete_func } = $props()
+    let options = getTextHookerOptionsContext();
 
 </script>
 
 <div class="relative flex items-center">
-    <p class="my-1 py-1 px-5 text-[22px]">
+    <p class="my-1 py-1 px-5" style="font-size: {options.font_size}px;">
         {#each line.tokens as word}
             {#if word.inflection in status_map}
                 <span class="relative status-underline {status_map[word.inflection]}">{word.inflection}</span>
