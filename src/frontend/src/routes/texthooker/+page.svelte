@@ -13,6 +13,39 @@ let vertical = $state(true);
 
 const errors = getContext("errors");
 
+let text_container: HTMLDivElement | undefined;
+
+function isNearBottom(threshold = 50) {
+    if (!text_container) { return false };
+    const rect = text_container.getBoundingClientRect();
+    const scrollBottom = text_container.scrollTop + rect.height;
+    return scrollBottom + threshold >= text_container.scrollHeight;
+}
+
+function isNearLeftMost(threshold = 50) {
+    if (!text_container) { return false };
+    const rect = text_container.getBoundingClientRect();
+    const scrollRight = text_container.scrollLeft - rect.width;
+    // console.log(scrollRight);
+    return -scrollRight + threshold >= text_container.scrollWidth;
+}
+
+function scrollBottom () {
+    if (isNearBottom()) {
+        text_container?.scrollTo(0, text_container.scrollHeight);
+        console.log("scrollBottom");
+    }
+}
+
+function scrollLeft () {
+    if (isNearLeftMost()) {
+        text_container?.scrollTo(-text_container.scrollWidth, 0);
+        console.log("scrollLeft");
+    }
+}
+
+let scrollToLast = $derived(options.vertical? scrollLeft: scrollBottom);
+
 async function processNewLine(new_line: string) {
     try {
         const res = await fetch("http://127.0.0.1:8000/texthooker/new_line", {
@@ -41,7 +74,6 @@ async function processNewLine(new_line: string) {
 
 function addNewLine(new_line: string) {
     let preprocessed_line = new_line.replaceAll("\n", " ");
-    // console.log(preprocessed_line);
     let tmp = {
         id: -1,
         raw: preprocessed_line,
@@ -67,7 +99,7 @@ function toggleWebSocket() {
 
         ws.addEventListener("message", (event) => {
             let line = JSON.parse(event.data)?.sentence?? event.data;
-            console.log(line);
+            // console.log(line);
             addNewLine(line);
         })
 
@@ -89,7 +121,7 @@ function toggleWebSocket() {
 
 <TopBar {toggleWebSocket} {ws_connected} />
 
-<div class="relative pt-10 w-full h-full overflow-scroll {vertical? "vert-rl": ""}">
+<div bind:this={text_container} class="relative pt-10 pb-5 w-full h-screen overflow-scroll {vertical? "vert-rl pl-5 pr-2": ""}">
     <!-- last session lines -->
     {#each lines as line}
         <TexthookerLine {line} {status_map} delete_func={() => { lines = lines.filter( e => e.id !== line.id)}} />
@@ -98,7 +130,10 @@ function toggleWebSocket() {
     <!-- lines added during current session -->
     {#each new_lines as line}
         {#await line.line}
-            <p class="my-1 py-1 px-5 text-[22px]">{line.raw}</p>
+            <p 
+            {@attach () => { scrollToLast() }}
+            class="my-1 py-1 px-5 text-[22px]"
+            style="font-size: {options.font_size}px;">{line.raw}</p>
         {:then line} 
             <TexthookerLine {line} {status_map} delete_func={ () => { new_lines = new_lines.filter( e => e.id !== line.id )} }/>
         {/await}
