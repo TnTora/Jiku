@@ -35,10 +35,10 @@ mock_session_lines = [{"id": i, "tokens": list(analyzer.parse(line))} for i, lin
 # reconstructing text input in the frontend easier after tokenization with spacy
 
 def increase_whitespace(match: re.Match) -> str:
-    return match.group(0) + " "
+    return " " + match.group(0)
 
 def correct_line_whitespace(line: str) -> str:
-    return re.sub(r" +", increase_whitespace, line)
+    return re.sub(r"(?<!\s) \s*", increase_whitespace, line)
 
 #-------------------------------------------------------------------------------
 
