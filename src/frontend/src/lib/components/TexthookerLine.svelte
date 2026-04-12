@@ -6,11 +6,13 @@
 </script>
 
 <div class="relative flex items-center">
-    <p class="my-1 py-1 px-5" style="font-size: {options.font_size}px;">
+    <p class="my-1 py-1 px-5 whitespace-pre-wrap" style="font-size: {options.font_size}px;">
         {#each line.tokens as word}
             {#if word.inflection in status_map}
                 <span class="relative status-underline {status_map[word.inflection]}">{word.inflection}</span>
-            {:else }
+            {:else if (word.pos !== "PUNCT" && word.pos !== "SPACE")}
+                <span class="relative status-underline unknown">{word.inflection}</span>
+            {:else}
                 {word.inflection}
             {/if}
     
