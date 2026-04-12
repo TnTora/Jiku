@@ -5,14 +5,6 @@ import TexthookerLine from "$lib/components/TexthookerLine.svelte";
 import TopBar from "./TopBar.svelte";
 import OptionPanel from "./OptionPanel.svelte";
 
-// interface TextHookerOptions {
-//     websocket_url?: string,
-//     font?: string,
-//     font_size?: number,
-//     line_space?: number,
-//     vertical: boolean,
-// }
-
 let { data } = $props();
 let lines = $state(data.lines);
 let status_map = $state(data.status_map);
@@ -21,6 +13,7 @@ let ws: WebSocket | null = null;
 let ws_connected = $state(false);
 
 let options = $state({
+    preset_name: "Default",
     websocket_url: "ws://localhost:6677",
     font_size: 22,
     vertical: false,
@@ -28,20 +21,22 @@ let options = $state({
 
 setTextHookerOptionsContext(options);
 
+let line_counter = $derived(lines.length+new_lines.length);
+
 let show_options = $state(false);
 
 const errors = getContext("errors");
 
 let text_container: HTMLDivElement | undefined;
 
-function isNearBottom(threshold = 50) {
+function isNearBottom(threshold = 100) {
     if (!text_container) { return false };
     const rect = text_container.getBoundingClientRect();
     const scrollBottom = text_container.scrollTop + rect.height;
     return scrollBottom + threshold >= text_container.scrollHeight;
 }
 
-function isNearLeftMost(threshold = 50) {
+function isNearLeftMost(threshold = 100) {
     if (!text_container) { return false };
     const rect = text_container.getBoundingClientRect();
     const scrollRight = text_container.scrollLeft - rect.width;
@@ -92,11 +87,10 @@ async function processNewLine(new_line: string) {
 }
 
 function addNewLine(new_line: string) {
-    let preprocessed_line = new_line.replaceAll("\n", " ");
     let tmp = {
         id: -1,
-        raw: preprocessed_line,
-        line: processNewLine(preprocessed_line),
+        raw: new_line,
+        line: processNewLine(new_line),
     };
     new_lines.push(tmp);
     tmp.line.then((line) => {
@@ -105,6 +99,11 @@ function addNewLine(new_line: string) {
 }
 
 function toggleWebSocket() {
+    if (!options.websocket_url) {
+        // TODO: inform user that no websocket is found in options.
+        return;
+    };
+
     if (ws == null) {
         ws = new WebSocket("ws://localhost:6677");
 
@@ -142,6 +141,13 @@ function toggleWebSocket() {
 
 {#if show_options}
     <OptionPanel />
+{:else}
+    <div class="fixed top-11 right-1 z-9 flex items-center justify-between gap-4 text-sm text-neutral-400 bg-neutral-900 px-2 rounded-full">
+        <label for="preset">Preset:</label>
+        <select id="preset" bind:value={options.preset_name}>
+            <option value="Default">Default</option>
+        </select>
+    </div>
 {/if}
 
 <div bind:this={text_container} class="relative pt-10 pb-5 w-full h-screen overflow-scroll {options.vertical? "vert-rl pl-5 pr-2": ""}">
@@ -155,7 +161,7 @@ function toggleWebSocket() {
         {#await line.line}
             <p 
             {@attach () => { scrollToLast() }}
-            class="my-1 py-1 px-5 text-[22px]"
+            class="my-1 py-1 px-5 whitespace-pre-wrap"
             style="font-size: {options.font_size}px;">{line.raw}</p>
         {:then line} 
             <TexthookerLine {line} {status_map} delete_func={ () => { new_lines = new_lines.filter( e => e.id !== line.id )} }/>
