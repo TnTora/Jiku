@@ -5,6 +5,9 @@ description = "Langauge learning tools"
 readme = "README.md"
 requires-python = ">=3.12, <3.14"
 dependencies = [
+    "beautifulsoup4>=4.14.3",
+    "ebooklib>=0.20",
     "fastapi[standard]>=0.135.1",
     "spacy>=3.8.14",
+    "tinycss2>=1.5.1",
 ]
