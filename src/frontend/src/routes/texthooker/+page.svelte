@@ -141,16 +141,17 @@ function toggleWebSocket() {
 
 {#if show_options}
     <OptionPanel />
-{:else}
-    <div class="fixed top-11 right-1 z-9 flex items-center justify-between gap-4 text-sm text-neutral-400 bg-neutral-900 px-2 rounded-full">
-        <label for="preset">Preset:</label>
-        <select id="preset" bind:value={options.preset_name}>
-            <option value="Default">Default</option>
-        </select>
-    </div>
 {/if}
 
-<div bind:this={text_container} class="relative pt-10 pb-5 w-full h-screen overflow-scroll {options.vertical? "vert-rl pl-5 pr-2": ""}">
+<div class="fixed bottom-1 left-[50%] -translate-x-[50%] z-9 flex items-center justify-between gap-4 text-xs text-neutral-500 bg-neutral-800 px-2 rounded-full">
+    <label for="preset">Preset:</label>
+    <select id="preset" bind:value={options.preset_name}>
+        <option value="Default">Default</option>
+    </select>
+</div>
+
+
+<div bind:this={text_container} class="relative pt-10 pb-6 w-full h-screen overflow-scroll {options.vertical? "vert-rl pl-5 pr-2": ""}">
     <!-- last session lines -->
     {#each lines as line}
         <TexthookerLine {line} {status_map} delete_func={() => { lines = lines.filter( e => e.id !== line.id)}} />
