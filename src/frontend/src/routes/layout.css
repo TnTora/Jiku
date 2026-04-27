@@ -1,14 +1,36 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
-
+.vert-rl .jiku-book-html,
+.vert-rl .jiku-book-body,
 .vert-rl {
+    -webkit-writing-mode: vertical-rl;
     writing-mode: vertical-rl;
-    float: right;
+}
+
+.vert-rl\! .jiku-book-html,
+.vert-rl\! .jiku-book-body,
+.vert-rl\! {
+    -webkit-writing-mode: vertical-rl !important;
+    writing-mode: vertical-rl !important;
+}
+
+.horz-tb .jiku-book-html,
+.horz-tb .jiku-book-body,
+.horz-tb {
+    -webkit-writing-mode: horizontal-tb;
+    writing-mode: horizontal-tb;
+}
+
+.horz-tb\! .jiku-book-html,
+.horz-tb\! .jiku-book-body,
+.horz-tb\! {
+    -webkit-writing-mode: horizontal-tb !important;
+    writing-mode: horizontal-tb !important;
 }
 
 
-.vert-rl .status-underline::after {
+/* .vert-rl .status-underline::after {
 content: "";
 position: absolute;
 width: 2px;
@@ -20,7 +42,6 @@ transform: translateY(-50%);
 }
 
 :not(.vert-rl) .status-underline:not(.vert-rl .status-underline)::after {
-/* .status_underline::after { */
     content: "";
     position: absolute;
     height: 2px;
@@ -37,4 +58,41 @@ transform: translateY(-50%);
 
 .unknown::after {
     background-color: red;
+} */
+
+.vert-rl .status-underline {
+    --w: 0.20rem;   /* the width of the underline */
+    --c: #4b9ed9; /* the default color */
+    
+    /* line-height: calc(.5rem + var(--w)); */
+    padding-left: calc(var(--w) + .2rem);
+    background: left/calc(var(--w)) calc(100% - 0.25rem) no-repeat;
+    --_g: calc(var(--w)/2) left 50%,var(--c) calc(var(--w)/2),#0000 calc(var(--w)/2) 100%;
+    background-image: 
+    radial-gradient(var(--w) at top  var(--_g)),   
+    radial-gradient(var(--w) at bottom var(--_g)),   
+    linear-gradient(to bottom,#0000 calc(var(--w)/2),var(--c) 0 calc(100% - var(--w)/2), #0000 0);
+}
+
+:not(.vert-rl) .status-underline:not(.vert-rl .status-underline) {
+    --h: 0.20rem;     /* the height of the underline */
+    --c: #4b9ed9; /* the default color */
+    
+    /* line-height: calc(1.5rem + var(--h)); */
+    padding-bottom: calc(var(--h) + 0.1rem);
+    background: bottom/calc(100% - 0.25rem) calc(var(--h)) no-repeat;
+    --_g: calc(var(--h)/2) top 50%,var(--c) calc(var(--h)/2),#0000 calc(var(--h)/2) 100%;
+    background-image: 
+    radial-gradient(var(--h) at left  var(--_g)),   
+    radial-gradient(var(--h) at right var(--_g)),   
+    linear-gradient(to right,#0000 calc(var(--h)/2),var(--c) 0 calc(100% - var(--h)/2), #0000 0);
+
+}
+
+.known {
+    --c: blueviolet !important;
+}
+
+.unknown {
+    --c: red !important;
 }
