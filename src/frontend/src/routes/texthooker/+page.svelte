@@ -140,7 +140,7 @@ function toggleWebSocket() {
 <TopBar {toggleWebSocket} {ws_connected} toggleOptions={() => {show_options = !show_options}}/>
 
 {#if show_options}
-    <OptionPanel />
+    <OptionPanel onoutsideclick={() => {show_options = false}}/>
 {/if}
 
 <div class="fixed bottom-1 left-[50%] -translate-x-[50%] z-9 flex items-center justify-between gap-4 text-xs text-neutral-500 bg-neutral-800 px-2 rounded-full">
