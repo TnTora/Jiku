@@ -1,8 +1,18 @@
-export function clickOutside(node: Element) {
+export function clickOutside(node: Element, exclude_query: string) {
+    const excluded = document.querySelectorAll(exclude_query);
+
     const handleClick = (event: Event) => {
-        if (!node.contains(event.target as Node)) {
-            node.dispatchEvent(new CustomEvent("outsideclick"));
+        if (node.contains(event.target as Node)) {
+            return;
         }
+
+        for (const ex_node of excluded) {
+            if (ex_node.contains(event.target as Node)) {
+                return;
+            }
+        }
+        
+        node.dispatchEvent(new CustomEvent("outsideclick"));
     };
 
     document.addEventListener("click", handleClick, true);

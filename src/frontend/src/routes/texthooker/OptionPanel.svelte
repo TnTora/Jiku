@@ -5,7 +5,7 @@
     let options = getTextHookerOptionsContext();
 </script>
 
-<div use:clickOutside {onoutsideclick} class="w-[20rem] grid grid-cols-2 items-center justify-between gap-1 px-4 py-4 fixed top-13 right-3 z-9 bg-mist-800/90 border rounded-xl">
+<div use:clickOutside={"button[title=Options]"} {onoutsideclick} class="w-[20rem] grid grid-cols-2 items-center justify-between gap-1 px-4 py-4 fixed top-13 right-3 z-9 bg-mist-800/90 border rounded-xl">
     <label for="preset">Preset</label>
     <select id="preset" bind:value={options.preset_name}>
         <option value="Default">Default</option>
