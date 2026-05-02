@@ -1,5 +1,5 @@
 <script>
-    let { title, toggleOptions, toggleSidePanel } = $props();
+    let { title, toggleOptions, toggleSidePanel, toggleJumpBox, toggleBookmarking} = $props();
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 </script>
 
@@ -20,12 +20,12 @@
     <div class="text-xs text-neutral-500 bg-neutral-800/95 px-2 py-1 rounded-full z-10">{title}</div>
 
     <div class="h-full flex justify-end gap-4 mr-4 items-center">
-        <button class="{btn_shared_classes}" title="Bookmark">
+        <button class="{btn_shared_classes}" title="Bookmark" onclick={toggleBookmarking}>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M18 2H6c-1.1 0-2 .9-2 2v17c0 .36.19.69.5.87s.69.18 1 0l6.5-3.72l6.5 3.72c.15.09.33.13.5.13s.35-.04.5-.13c.31-.18.5-.51.5-.87V4c0-1.1-.9-2-2-2" />
             </svg>
         </button>
-        <button class="{btn_shared_classes}" title="Jump To">
+        <button class="{btn_shared_classes}" title="Jump To" onclick={toggleJumpBox}>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6" viewBox="0 0 32 32">
                 <path fill="currentColor" d="M13.414 17.586L18 22.172V8H8V6h10a2 2 0 0 1 2 2v14.172l4.586-4.586L26 19l-7 7l-7-7Z" />
             </svg>

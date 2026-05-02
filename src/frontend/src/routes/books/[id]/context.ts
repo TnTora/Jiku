@@ -6,7 +6,8 @@ export interface EbookReaderOptions {
     line_height: number,
     vertical: boolean,
     paginated: boolean,
-    show_progress: boolean,
+    show_progress_bar: boolean,
+    show_progress_tokens: boolean,
     limit_progress_to_section: boolean,
     override_ebook_css?: boolean,
 }
