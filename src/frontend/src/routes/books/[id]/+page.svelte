@@ -27,7 +27,7 @@
 
     let options = $state({
         font_size: 20,
-        line_height: 40,
+        line_height: 2.25,
         vertical: true,
         paginated: true,
         show_progress_bar: true,
@@ -356,7 +356,7 @@
     bind:offsetHeight={book_container_offHeight}
     bind:offsetWidth={book_container_offWidth}
     class="jiku-book-container {bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb!"} {options.paginated? "paginated overflow-hidden": "px-12 py-12 overflow-scroll!"} h-screen w-[calc(100vw-2*var(--book-x-margin))]! pt-14 pb-12 bg-neutral-800!" 
-    style="{options.paginated? "--book-x-margin: 2rem;" : ""} line-height: {options.line_height}px; font-size: {options.font_size}px"
+    style="{options.paginated? "--book-x-margin: 2rem;" : ""} --forced-line-height: {options.line_height}; font-size: {options.font_size}px"
 >
     {#await content}
         Loading
@@ -380,6 +380,7 @@
 <style>
     :root {
         --book-x-margin: 0rem;
+        --forced-line-height: 2;
     }
 
     :global .bookmarking span:hover{
@@ -387,6 +388,10 @@
         cursor:crosshair;
         border-radius: 0.5rem;
         border: 1rem;
+    }
+
+    :global .jiku-book-container p {
+        line-height: var(--forced-line-height) !important;
     }
 
     .paginated:not(.vert-rl) {

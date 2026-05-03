@@ -51,9 +51,9 @@
 
     <label for="line_height">Line Height</label>
     <div class="flex items-center mx-auto border border-neutral-600 bg-neutral-600 rounded-full">
-        <button onclick={() => { options.line_height-- }} class="w-7 h-7 pl-1 rounded-l-full cursor-pointer bg-neutral-700 active:bg-neutral-600">-</button>
+        <button onclick={() => { options.line_height -= 0.25 }} class="w-7 h-7 pl-1 rounded-l-full cursor-pointer bg-neutral-700 active:bg-neutral-600">-</button>
         <input id="line_height" type="number" bind:value={options.line_height} class="w-9 h-7 text-sm text-center hide-input-spinners z-10">
-        <button onclick={() => { options.line_height++ }} class="w-7 h-7 pr-1 rounded-r-full cursor-pointer bg-neutral-700 active:bg-neutral-600">+</button>
+        <button onclick={() => { options.line_height += 0.25 }} class="w-7 h-7 pr-1 rounded-r-full cursor-pointer bg-neutral-700 active:bg-neutral-600">+</button>
     </div>
 
 
