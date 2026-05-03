@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { tick } from "svelte";
     import { setEbookReaderOptionsContext } from "./context";
     import { clickOutside } from "$lib/utils/clickOutside.js";
 	import TopBar from "./TopBar.svelte";
@@ -8,22 +9,31 @@
     import BookRender from "./BookRender.svelte";
 
     let { data } = $props();
-    let { book } = data;
+    let { book } = $derived(data);
+
+
     let curr_section: string = $state("p-003");
+
     let prev_section: string | null = $derived(
         (book.sections[curr_section].number > 0)? book.spine[book.sections[curr_section].number-1]:
         null
     );
+
     let next_section: string | null = $derived(
         ((book.sections[curr_section].number >= 0) && (book.sections[curr_section].number < book.spine.length-1))?
         book.spine[book.sections[curr_section].number+1]:
         null
     );
-    console.log(book);
 
-    $effect(() => {
-        console.log(prev_section, next_section);
-    });
+
+    let content = $state("");
+    let backward_load = false;
+
+
+    // $effect(() => {
+    //     console.log(book);
+    //     console.log(prev_section, next_section);
+    // });
 
     let options = $state({
         font_size: 20,
@@ -40,6 +50,7 @@
     let show_options = $state(false);
     let show_side_panel = $state(false);
     let show_jump_to = $state(false);
+    let jump_to_value = $state(0)
 
     let bookmarking = $state(false);
     let show_bookmarking_confirmation = $state(false);
@@ -61,6 +72,9 @@
 
     
     let page_top_par: HTMLParagraphElement | null;
+    let skip_intersection: boolean = false;
+
+
     let curr_token_abs: number = $state(book.sections[curr_section].start_tok);
     let curr_token_rel: number = $derived(curr_token_abs - book.sections[curr_section].start_tok);
     let curr_token: number = $derived(options.limit_progress_to_section? curr_token_rel: curr_token_abs);
@@ -68,21 +82,19 @@
         (options.limit_progress_to_section && next_section)? book.sections[next_section].start_tok - book.sections[curr_section].start_tok:
         book.stats.total_tokens
     );
-    let skip_intersection: boolean = false;
+
 
     let book_container_scrollPercent: number = $derived(
         (curr_token/total_tokens)*100
     );
 
+
     async function loadSectionContent(name:string) {
         const res = await fetch(`http://127.0.0.1:8000/books/1/${name}`);
-	    const content = await res.json();
         curr_section = name;
-        return content;
+	    content = await res.json();
     }
 
-    let content = $state(loadSectionContent("p-003"));
-    let backward_load = false;
 
     let pageScrollParam = $derived(
         options.vertical? (top:number) => { return {top: top} } :
@@ -120,19 +132,25 @@
 
     function nextPage(){
         skip_intersection = false;
-        book_container.scrollBy(pageScrollParam(book_container_inline_offset));
+        // console.log(getScrollPosition(book_container)+book_container_inline_offset, getScrollLength(book_container));
+
         if ((getScrollPosition(book_container)+book_container_inline_offset >= getScrollLength(book_container)) && next_section) {
             backward_load = false;
-            content = loadSectionContent(next_section);
+            loadSectionContent(next_section);
+        } else {
+            book_container.scrollBy(pageScrollParam(book_container_inline_offset));
         }
     }
 
     function prevPage(){
         skip_intersection = false;
-        book_container.scrollBy(pageScrollParam(-book_container_inline_offset));
+        // console.log(getScrollPosition(book_container)-book_container_inline_offset, getScrollLength(book_container));
+
         if ((getScrollPosition(book_container)-book_container_inline_offset < 0) && prev_section) {
             backward_load = true;
-            content = loadSectionContent(prev_section);
+            loadSectionContent(prev_section);
+        } else { 
+            book_container.scrollBy(pageScrollParam(-book_container_inline_offset));
         }
     }
 
@@ -141,7 +159,6 @@
     let resize_observer: ResizeObserver;
 
     function observeFirstColElements_paginated(){
-        console.log("observeFirstColElements_paginated");
         const elements = book_container.querySelectorAll("p[data-char-start]") as NodeListOf<HTMLParagraphElement>;
         let previous_offset: number = 0;
         let page: number = 0;
@@ -198,6 +215,7 @@
     )
 
     onMount(() => {
+        loadSectionContent("p-003");
         console.log(book_container);
         page_top_par = null;
 
@@ -237,10 +255,6 @@
         });
 
         resize_observer.observe(book_container);
-        // intersection_observer.observe(page_top_par);
-        // setTimeout(observeFirstColElements, 100);
-        // observeFirstColElements()
-        // setInterval(() => {console.log(intersection_observer)}, 2000);
     });
 
     function startBookmarking() {
@@ -266,6 +280,8 @@
     function onBookContentUpdate() {
         if (backward_load) {
             scrollToPosition(getScrollLength(book_container));
+        } else {
+            scrollToPosition(0);
         }
 
         intersection_observer.disconnect();
@@ -273,11 +289,52 @@
         curr_token_abs = book.sections[curr_section].start_tok;
     }
 
+    async function jumpToToken(token: number) {
+        if (token < 0 || token > book.stats.total_tokens) {
+            return;
+        }
+
+        let start = 0;
+        let end = book.spine.length - 1;
+        let section: string = curr_section;
+
+        // console.log(start, end);
+
+        while (start <= end) {
+            let mid = start + Math.floor((end-start)/2);
+            // console.log(start, end);
+            // console.log("mid", mid, book.sections[book.spine[mid]].key, book.sections[book.spine[mid]].start_tok);
+            if (book.sections[book.spine[mid]].start_tok == token) {
+                section = book.sections[book.spine[mid]].key;
+                break;
+            } else if (book.sections[book.spine[mid]].start_tok > token) {
+                end = mid - 1;
+            } else {
+                section = book.sections[book.spine[mid]].key;
+                start = mid + 1;
+            }
+        }
+
+        // console.log(token, section);
+
+        if (section != curr_section) {
+            await loadSectionContent(section);
+        }
+
+        await tick();
+
+        let token_span = book_container.querySelector(`span[data-tok='${token}'`);
+        // console.log(token_span);
+        scrollToPosition(getInlineOffset(token_span as HTMLElement));
+        curr_token_abs = token;
+
+    }
+
 </script>
 
 <svelte:head>
     {#each book.stylesheets as sheet_file}
-        <link rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/books/{book.id}/stylesheets/{sheet_file}" disabled>
+        <link rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/books/{book.id}/stylesheets/{sheet_file}">
     {/each}
 </svelte:head>
 
@@ -302,8 +359,17 @@
         class="absolute w-40 top-13 right-3 z-20 bg-[#1B1B1B] border border-neutral-900 rounded-2xl flex flex-col items-center justify-evenly gap-3 py-3"
     >
         <span>Jump To Token</span>
-        <input type="number" class="w-25 bg-neutral-800 rounded-md text-center hide-input-spinners">
-        <button title="Jump" class="px-3 py-1 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600">Jump</button>
+        <input bind:value={jump_to_value} type="number" class="w-25 bg-neutral-800 rounded-md text-center hide-input-spinners">
+        <button 
+            title="Jump"
+            class="px-3 py-1 bg-neutral-800 rounded-full text-sm font-semibold cursor-pointer hover:bg-neutral-700 active:bg-neutral-600"
+            onclick={() => {
+                show_jump_to = false;
+                jumpToToken(jump_to_value);
+            }}
+        >
+            Jump
+        </button>
     </div>
 {/if}
 
@@ -358,12 +424,13 @@
     class="jiku-book-container {bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb!"} {options.paginated? "paginated overflow-hidden": "px-12 py-12 overflow-scroll!"} h-screen w-[calc(100vw-2*var(--book-x-margin))]! pt-14 pb-12 bg-neutral-800!" 
     style="{options.paginated? "--book-x-margin: 2rem;" : ""} --forced-line-height: {options.line_height}; font-size: {options.font_size}px"
 >
-    {#await content}
-        Loading
-    {:then content} 
-        <BookRender {content} onMountCallback={onBookContentUpdate}/>
-    {/await}
-    <!-- {@html content} -->
+    {#if content}
+        <BookRender {content} onUpdateCallback={onBookContentUpdate}/>
+    {:else}
+        <div class="w-screen h-screen flex items-center justify-center">
+            <div>Loading...</div>
+        </div>
+    {/if}
 </div>
 
 

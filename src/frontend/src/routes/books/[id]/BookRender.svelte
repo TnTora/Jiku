@@ -1,10 +1,13 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    let { content, onMountCallback} = $props();
+    import { tick } from "svelte";
+    let { content, onUpdateCallback} = $props();
 
-    onMount(() => {
-        onMountCallback();
-    })
+    $effect.pre(() => {
+        if (!content) { return };
+        tick().then(() => {
+            onUpdateCallback();
+        });
+    });
 
 </script>
 
