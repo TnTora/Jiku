@@ -5,9 +5,10 @@
 	import TopBar from "./TopBar.svelte";
     import OptionPanel from "./OptionPanel.svelte";
     import SidePanel from "./SidePanel.svelte";
+    import BookRender from "./BookRender.svelte";
 
     let { data } = $props();
-    let { book, content } = data;
+    let { book } = data;
     let curr_section: string = $state("p-003");
     let prev_section: string | null = $derived(
         (book.sections[curr_section].number > 0)? book.spine[book.sections[curr_section].number-1]:
@@ -19,7 +20,10 @@
         null
     );
     console.log(book);
-    console.log(prev_section, next_section);
+
+    $effect(() => {
+        console.log(prev_section, next_section);
+    });
 
     let options = $state({
         font_size: 20,
@@ -57,7 +61,7 @@
 
     
     let page_top_par: HTMLParagraphElement | null;
-    let curr_token_abs: number = $state(0);
+    let curr_token_abs: number = $state(book.sections[curr_section].start_tok);
     let curr_token_rel: number = $derived(curr_token_abs - book.sections[curr_section].start_tok);
     let curr_token: number = $derived(options.limit_progress_to_section? curr_token_rel: curr_token_abs);
     let total_tokens: number = $derived(
@@ -70,6 +74,15 @@
         (curr_token/total_tokens)*100
     );
 
+    async function loadSectionContent(name:string) {
+        const res = await fetch(`http://127.0.0.1:8000/books/1/${name}`);
+	    const content = await res.json();
+        curr_section = name;
+        return content;
+    }
+
+    let content = $state(loadSectionContent("p-003"));
+    let backward_load = false;
 
     let pageScrollParam = $derived(
         options.vertical? (top:number) => { return {top: top} } :
@@ -87,8 +100,18 @@
         (el: HTMLElement) => { return el.offsetTop }
     );
 
+    let getScrollPosition = $derived(
+        options.vertical? (el: HTMLElement) => { return el.scrollTop } :
+        (el: HTMLElement) => { return el.scrollLeft }
+    )
 
-    function jumpTo(scroll_position: number) {
+    let getScrollLength = $derived(
+        options.vertical? (el: HTMLElement) => { return el.scrollHeight } :
+        (el: HTMLElement) => { return el.scrollWidth }
+    )
+
+
+    function scrollToPosition(scroll_position: number) {
         book_container.scrollTo(
             pageScrollParam(Math.floor(scroll_position / book_container_inline_offset) * book_container_inline_offset)
         );
@@ -98,11 +121,19 @@
     function nextPage(){
         skip_intersection = false;
         book_container.scrollBy(pageScrollParam(book_container_inline_offset));
+        if ((getScrollPosition(book_container)+book_container_inline_offset >= getScrollLength(book_container)) && next_section) {
+            backward_load = false;
+            content = loadSectionContent(next_section);
+        }
     }
 
     function prevPage(){
         skip_intersection = false;
         book_container.scrollBy(pageScrollParam(-book_container_inline_offset));
+        if ((getScrollPosition(book_container)-book_container_inline_offset < 0) && prev_section) {
+            backward_load = true;
+            content = loadSectionContent(prev_section);
+        }
     }
 
 
@@ -110,6 +141,7 @@
     let resize_observer: ResizeObserver;
 
     function observeFirstColElements_paginated(){
+        console.log("observeFirstColElements_paginated");
         const elements = book_container.querySelectorAll("p[data-char-start]") as NodeListOf<HTMLParagraphElement>;
         let previous_offset: number = 0;
         let page: number = 0;
@@ -166,6 +198,7 @@
     )
 
     onMount(() => {
+        console.log(book_container);
         page_top_par = null;
 
         intersection_observer = new IntersectionObserver(entries => {
@@ -182,9 +215,10 @@
         let resize_timeout;
         resize_observer = new ResizeObserver(entries => {
             intersection_observer.disconnect();
+            console.log("resizing");
             if (page_top_par) {
                 // console.log("jumping to ", page_top_par);
-                jumpTo(getInlineOffset(page_top_par));
+                scrollToPosition(getInlineOffset(page_top_par));
             }
             clearTimeout(resize_timeout);
             resize_timeout = setTimeout(() => {
@@ -204,7 +238,8 @@
 
         resize_observer.observe(book_container);
         // intersection_observer.observe(page_top_par);
-        setTimeout(observeFirstColElements, 1000);
+        // setTimeout(observeFirstColElements, 100);
+        // observeFirstColElements()
         // setInterval(() => {console.log(intersection_observer)}, 2000);
     });
 
@@ -228,6 +263,15 @@
         document.addEventListener("click", handleClick, true);
     };
 
+    function onBookContentUpdate() {
+        if (backward_load) {
+            scrollToPosition(getScrollLength(book_container));
+        }
+
+        intersection_observer.disconnect();
+        observeFirstColElements();
+        curr_token_abs = book.sections[curr_section].start_tok;
+    }
 
 </script>
 
@@ -307,13 +351,19 @@
 
 
 
-<div bind:this={book_container} 
+<div
+    bind:this={book_container} 
     bind:offsetHeight={book_container_offHeight}
     bind:offsetWidth={book_container_offWidth}
     class="jiku-book-container {bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb!"} {options.paginated? "paginated overflow-hidden": "px-12 py-12 overflow-scroll!"} h-screen w-[calc(100vw-2*var(--book-x-margin))]! pt-14 pb-12 bg-neutral-800!" 
     style="{options.paginated? "--book-x-margin: 2rem;" : ""} line-height: {options.line_height}px; font-size: {options.font_size}px"
 >
-    {@html content}
+    {#await content}
+        Loading
+    {:then content} 
+        <BookRender {content} onMountCallback={onBookContentUpdate}/>
+    {/await}
+    <!-- {@html content} -->
 </div>
 
 

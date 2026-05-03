@@ -59,9 +59,9 @@
 
     <h2 class="{header_style}">Extra</h2>
 
-    <span>Show Progress</span>
+    <span>Show Progress Bar</span>
     <div class="toggle">
-        <Toggle option={options.show_progress_bar} title={"Show Progress"} height={1.25}  onclick={toggleOption("show_progress_bar")}/>
+        <Toggle option={options.show_progress_bar} title={"Show Progress Bar"} height={1.25}  onclick={toggleOption("show_progress_bar")}/>
     </div>
 
     <span>Show Tokens Progress</span>
