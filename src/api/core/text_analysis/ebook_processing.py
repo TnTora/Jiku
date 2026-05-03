@@ -79,7 +79,8 @@ def process_ebub(filepath: Path, book_id) -> Book:
         toc=toc,
         metadata=metadata,
         original_file=filepath.name,
-        static_url="jiku://",
+        # static_url="jiku://",
+        static_url="http://127.0.0.1:8000/static/books",
         stats=stats
     )
 
@@ -144,7 +145,8 @@ def process_html_content(filepath: Path, content: bytes, book_id: int, stats: Bo
 
     for img in soup.find_all("img", src=True):
         filename = Path(img["src"]).name
-        img["src"] = f"jiku://books/{book_id}/images/{filename}"
+        # img["src"] = f"jiku://books/{book_id}/images/{filename}"
+        img["src"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
 
 
     section = Section(
@@ -185,7 +187,7 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
 
         tokens = analyzer.parse(p_text, pos_exclude={"SPACE", "PUNCT", "NUM", "SYM", "X"})
         # print(f"{tokens}, {type(tokens)}")
-        print(p_tag, "\n")
+        # print(p_tag, "\n")
         start_ch = stats.total_char
         # original_attrs = p_tag.attrs
 
@@ -207,12 +209,12 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
             new_tag["data-char-start"] = start_ch
 
         p_tag.replace_with(new_tag)
-        print("new_tag", new_tag.prettify(), "\n")
+        # print("new_tag", new_tag.prettify(), "\n")
 
 
 
 def handle_html_node(node: PageElement, context: TokenizationContext) -> None:
-    print("node", node)
+    # print("node", node)
     # print("handle", context.new_content)
     if context.curr_token is None:
         context.new_content.append(str(node))
@@ -236,7 +238,12 @@ def handle_html_node(node: PageElement, context: TokenizationContext) -> None:
         context.new_content.append(f"</{node.name}>")
 
     else:
+        handle_nav_string(node, context)
+
+
+def handle_nav_string(node: NavigableString, context: TokenizationContext) -> bool:
         i = 0
+        starting_token = context.curr_token
         if context.partial_match_end_idx > 0:
             idx_increment = min(len(node), len(context.curr_token.inflection)-context.partial_match_end_idx)
             if node.startswith(context.curr_token.inflection[context.partial_match_end_idx:context.partial_match_end_idx+idx_increment]):
@@ -253,10 +260,10 @@ def handle_html_node(node: PageElement, context: TokenizationContext) -> None:
                     i = idx_increment
                     if context.curr_token is None:
                         context.new_content.append(node[i:])
-                        return
+                        return True
                 else:
-                    return
-        print(f"{i = }")
+                    return False
+        # print(f"{i = }")
         while i < len(node):
             # print(f"{i = }", context.new_content)
             curr_text = node[i:]
@@ -276,9 +283,9 @@ def handle_html_node(node: PageElement, context: TokenizationContext) -> None:
                             open_tag = re.search(r"<.*?>", str(node.parent)).group()
                             context.new_content.append(f'</{node.parent.name}><span class="tok-{context.curr_token.lemma} status-underline" data-tok={context.stats.total_tokens}>')
                             context.new_content.append(f"{open_tag}{context.curr_token.inflection[:end]}")
-                        return
+                        return False
                 context.new_content.append(curr_text)
-                return
+                return False
 
             context.new_content.append(curr_text[:match_idx])
 
@@ -293,13 +300,41 @@ def handle_html_node(node: PageElement, context: TokenizationContext) -> None:
 
             if context.curr_token is None:
                 context.new_content.append(node[i:])
-                return
+                return True
+
+        return context.curr_token != starting_token
 
 
 def handle_ruby(node: Tag, context: TokenizationContext):
+    open_tag_idx = -1
+
+    rt: list[str] = []
+
     for child in node.children:
         if isinstance(child, NavigableString):
-            handle_html_node(child, context)
+            if open_tag_idx < 0:
+                open_tag_idx = len(context.new_content)
+                context.new_content.append("<ruby>")
+
+            if child.next_sibling and child.next_sibling.name == "rt":
+                rt.append(child.next_sibling.get_text())
+
+            completed_token = handle_nav_string(child, context)
+
+            if completed_token:
+                context.new_content.append(f"<rt>{"".join(rt)}</rt>")
+                rt = []
+                context.new_content.append("</ruby>")
+                open_tag_idx = -1
+
+    if open_tag_idx >= 0:
+        context.new_content.pop(open_tag_idx)
+        for i in range(open_tag_idx, len(context.new_content)):
+            if "data-tok" in context.new_content[i]:
+                context.new_content.insert(i+1, "<ruby>")
+        context.new_content.append(f"<rt>{"".join(rt)}</rt></ruby>")
+
+
 
 
 if __name__ == "__main__":
