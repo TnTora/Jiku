@@ -55,25 +55,27 @@
     let bookmarking = $state(false);
     let show_bookmarking_confirmation = $state(false);
     let bookmark_selection: number | null = null;
-    let bookmark_selection_name: str | null = null;
+    let bookmark_selection_name: string | null = $state(null);
 
     let book_container: HTMLDivElement;
-    let book_container_offHeight: number = $state(0);
-    let book_container_offWidth: number = $state(0);
+    let book_container_height: number = $state(0);
+    let book_container_width: number = $state(0);
 
     let book_container_inline_offset: number = $derived(
-        options.vertical? book_container_offHeight:
-        book_container_offWidth
+        options.vertical? book_container_height:
+        book_container_width
     );
 
     let book_container_block_offset: number = $derived(
-        options.vertical? book_container_offWidth:
-        book_container_offHeight
+        options.vertical? book_container_width:
+        book_container_height
     );
 
     
     let page_top_par: HTMLParagraphElement | null;
     let skip_intersection: boolean = false;
+
+    let section_page: number = 0;
 
 
     let curr_token_abs: number = $state(book.sections[curr_section].start_tok);
@@ -134,12 +136,14 @@
     function nextPage(){
         skip_intersection = false;
         // console.log(getScrollPosition(book_container)+book_container_inline_offset, getScrollLength(book_container));
-
-        if ((getScrollPosition(book_container)+book_container_inline_offset >= getScrollLength(book_container)) && next_section) {
+        const next_position = getScrollPosition(book_container)+book_container_inline_offset;
+        // console.log(next_position, next_section);
+        if ((Math.ceil(next_position) >= getScrollLength(book_container)) && next_section) {
             backward_load = false;
             loadSectionContent(next_section);
         } else {
-            book_container.scrollBy(pageScrollParam(book_container_inline_offset));
+            // book_container.scrollBy(pageScrollParam(book_container_inline_offset));
+            scrollToPosition(next_position);
         }
     }
 
@@ -147,11 +151,13 @@
         skip_intersection = false;
         // console.log(getScrollPosition(book_container)-book_container_inline_offset, getScrollLength(book_container));
 
-        if ((getScrollPosition(book_container)-book_container_inline_offset < 0) && prev_section) {
+        const next_position = getScrollPosition(book_container)-book_container_inline_offset;
+        if ((next_position < 0) && prev_section) {
             backward_load = true;
             loadSectionContent(prev_section);
         } else { 
-            book_container.scrollBy(pageScrollParam(-book_container_inline_offset));
+            // book_container.scrollBy(pageScrollParam(-book_container_inline_offset));
+            scrollToPosition(next_position);
         }
     }
 
@@ -220,6 +226,9 @@
         console.log(book_container);
         page_top_par = null;
 
+        book_container_height = book_container.getBoundingClientRect().height;
+        book_container_width = book_container.getBoundingClientRect().width;
+
         intersection_observer = new IntersectionObserver(entries => {
             entries.forEach(entry => {
                 if (entry.isIntersecting && !skip_intersection) {
@@ -242,7 +251,10 @@
             clearTimeout(resize_timeout);
             resize_timeout = setTimeout(() => {
                 skip_intersection = true;
+                book_container_height = book_container.getBoundingClientRect().height;
+                book_container_width = book_container.getBoundingClientRect().width;
                 observeFirstColElements();
+
 
                 if (!options.paginated) {
                     function activateObserver() {
@@ -352,144 +364,150 @@
 </svelte:head>
 
 
-<TopBar title={book.metadata.title}
-        toggleOptions={() => {show_options = !show_options}}
-        toggleSidePanel={() => {show_side_panel = !show_side_panel}}
-        toggleJumpBox={() => {show_jump_to = !show_jump_to}}
-        toggleBookmarking={startBookmarking}/>
+<div class="flex flex-col h-screen w-screen">
+    <TopBar title={book.metadata.title}
+            toggleOptions={() => {show_options = !show_options}}
+            toggleSidePanel={() => {show_side_panel = !show_side_panel}}
+            toggleJumpBox={() => {show_jump_to = !show_jump_to}}
+            toggleBookmarking={startBookmarking}/>
 
-{#if show_options}
-    <OptionPanel onoutsideclick={() => { show_options = false }} />
-{/if}
+    <div class="flex-1 h-[calc(100vh-3rem)] relative">
 
-{#if show_side_panel}
-    <SidePanel
-        {book}
-        onoutsideclick={() => { show_side_panel = false }} 
-        updatePosition={async (section: string, token: number | null = null) => {
-            backward_load = false;
-            if (section != curr_section) {
-                await loadSectionContent(section);
-                curr_token_abs = book.sections[section].start_tok;
-            }
+        {#if show_options}
+            <OptionPanel onoutsideclick={() => { show_options = false }} />
+        {/if}
 
-            await tick();
+        {#if show_side_panel}
+            <SidePanel
+                {book}
+                onoutsideclick={() => { show_side_panel = false }} 
+                updatePosition={async (section: string, token: number | null = null) => {
+                    backward_load = false;
+                    if (section != curr_section) {
+                        await loadSectionContent(section);
+                        curr_token_abs = book.sections[section].start_tok;
+                    }
 
-            if (token) {
-                let token_span = book_container.querySelector(`span[data-tok='${token}'`);
-                // console.log(token_span);
-                scrollToPosition(getInlineOffset(token_span as HTMLElement));
-                curr_token_abs = token;
-            } else {
-                scrollToPosition(0);
-            }
-        }}
-    />
-{/if}
+                    await tick();
 
-{#if show_jump_to}
-    <div use:clickOutside={"button[title='Jump To']"}
-        onoutsideclick={() => {show_jump_to = false}}
-        class="absolute w-40 top-13 right-3 z-20 bg-[#1B1B1B] border border-neutral-900 rounded-2xl flex flex-col items-center justify-evenly gap-3 py-3"
-    >
-        <span>Jump To Token</span>
-        <div class="flex flex-col items-center gap-0.5">
-            <input bind:value={jump_to_value} type="number" class="w-25 bg-neutral-800 rounded-md text-center hide-input-spinners">
-            <span class="text-xs text-neutral-400">of {book.stats.total_tokens}</span>
-        </div>
-        <button 
-            title="Jump"
-            class="px-3 py-1 bg-neutral-800 rounded-full text-sm font-semibold cursor-pointer hover:bg-neutral-700 active:bg-neutral-600"
-            onclick={() => {
-                show_jump_to = false;
-                jumpToToken(jump_to_value);
-            }}
-        >
-            Jump
-        </button>
-    </div>
-{/if}
+                    if (token) {
+                        let token_span = book_container.querySelector(`span[data-tok='${token}'`);
+                        // console.log(token_span);
+                        scrollToPosition(getInlineOffset(token_span as HTMLElement));
+                        curr_token_abs = token;
+                    } else {
+                        scrollToPosition(0);
+                    }
+                }}
+            />
+        {/if}
 
-{#if bookmarking}
-    <div class="absolute w-full z-20 text-neutral-400 bottom-6 text-center text-lg">
-        Select Bookmark starting position
-    </div>
-{/if}
-
-{#if show_bookmarking_confirmation}
-    <div class="w-full h-full bg-neutral-800/90 absolute flex items-center justify-center">
-        <div class="p-4 bg-[#1B1B1B] border border-neutral-900 rounded-2xl flex flex-col text-center items-center justify-center gap-3">
-            <p>Choose a name</p>
-            <input bind:value={bookmark_selection_name} type="text" defaultvalue="Bookmark {book.bookmarks.length + 1}" class="text-center bg-neutral-800 rounded-md">
-            <div class="flex items-center justify-evenly gap-4">
-                <button
-                    class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600"
+        {#if show_jump_to}
+            <div use:clickOutside={"button[title='Jump To']"}
+                onoutsideclick={() => {show_jump_to = false}}
+                class="absolute w-40 top-2 right-3 z-20 bg-[#1B1B1B] border border-neutral-900 rounded-2xl flex flex-col items-center justify-evenly gap-3 py-3"
+            >
+                <span>Jump To Token</span>
+                <div class="flex flex-col items-center gap-0.5">
+                    <input bind:value={jump_to_value} type="number" class="w-25 bg-neutral-800 rounded-md text-center hide-input-spinners">
+                    <span class="text-xs text-neutral-400">of {book.stats.total_tokens}</span>
+                </div>
+                <button 
+                    title="Jump"
+                    class="px-3 py-1 bg-neutral-800 rounded-full text-sm font-semibold cursor-pointer hover:bg-neutral-700 active:bg-neutral-600"
                     onclick={() => {
-                        addBookmark();
-                        cancelBookmarking();
+                        show_jump_to = false;
+                        jumpToToken(jump_to_value);
                     }}
                 >
-                    Ok
-                </button>
-                <button
-                    class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600"
-                    onclick={cancelBookmarking}>
-                    Cancel
+                    Jump
                 </button>
             </div>
-            
+        {/if}
+
+
+        {#if show_bookmarking_confirmation}
+            <div class="w-full h-full bg-neutral-800/90 absolute flex items-center justify-center">
+                <div class="p-4 bg-[#1B1B1B] border border-neutral-900 rounded-2xl flex flex-col text-center items-center justify-center gap-3">
+                    <p>Choose a name</p>
+                    <input bind:value={bookmark_selection_name} type="text" defaultvalue="Bookmark {book.bookmarks.length + 1}" class="text-center bg-neutral-800 rounded-md">
+                    <div class="flex items-center justify-evenly gap-4">
+                        <button
+                            class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600"
+                            onclick={() => {
+                                addBookmark();
+                                cancelBookmarking();
+                            }}
+                        >
+                            Ok
+                        </button>
+                        <button
+                            class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600"
+                            onclick={cancelBookmarking}>
+                            Cancel
+                        </button>
+                    </div>
+                    
+                </div>
+            </div>
+        {/if}
+
+
+        {#if options.paginated}
+            <!-- Left Arrow -->
+            <button onclick={options.vertical? nextPage : prevPage} aria-label={options.vertical? "Next Page" : "Prev Page"} class="w-12 absolute left-0 flex items-center justify-center text-neutral-500 hover:bg-linear-[to_right,#333,transparent] h-full z-10">
+                <svg class="w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path fill="currentColor" d="m4 10l9 9l1.4-1.5L7 10l7.4-7.5L13 1z" />
+                </svg>
+            </button>
+            <!-- Right Arrow -->
+            <button onclick={options.vertical? prevPage : nextPage} aria-label={options.vertical? "Prev Page" : "Next Page"} class="w-12 absolute right-0 flex items-center justify-center text-neutral-500 hover:bg-linear-[to_left,#333,transparent] h-full z-10">
+                <svg class="w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path fill="currentColor" d="M7 1L5.6 2.5L13 10l-7.4 7.5L7 19l9-9z" />
+                </svg>
+            </button>
+        {/if}
+
+
+
+        <div
+            bind:this={book_container}
+            class="jiku-book-container {bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb!"} {options.paginated? "paginated overflow-hidden": "overflow-scroll! p-12"} h-[calc(100%-var(--book-margin-top)-var(--book-margin-bottom))] w-[calc(100%-2*var(--book-x-margin))]! bg-neutral-800!" 
+            style="--forced-line-height: {options.line_height}; font-size: {options.font_size}px; {options.paginated? "": "--book-x-margin: 0rem; --book-margin-top: 0rem; --book-margin-bottom: 0rem;"}"
+        >
+            {#if content}
+                <BookRender {content} onUpdateCallback={onBookContentUpdate}/>
+            {:else}
+                <div class="w-screen h-screen flex items-center justify-center">
+                    <div>Loading...</div>
+                </div>
+            {/if}
         </div>
+
+
+        <div class="h-9 w-full fixed bottom-0 z-10 bg-neutral-800/98">
+            {#if bookmarking}
+                <div class="absolute w-full z-20 text-neutral-400 top-0 text-center text-lg">
+                    Select Bookmark starting position
+                </div>
+            {/if}
+            {#if options.show_progress_tokens}
+                <div class="absolute rounded text-neutral-500 h-full {options.vertical? "left-2": "right-2"} flex items-center">
+                    <span>
+                        {curr_token} / {total_tokens}
+                    </span>
+                </div>
+            {/if}
+            {#if options.show_progress_bar}
+                <div class="h-2 {options.limit_progress_to_section? "bg-mist-700": "bg-emerald-800"} absolute bottom-0 {options.vertical? "right-0 rounded-l-full": "left-0 rounded-r-full"} transition-[width] duration-200" style="width:{book_container_scrollPercent}%"></div>
+            {/if}
+        </div>
+
     </div>
-{/if}
-
-
-{#if options.paginated}
-    <!-- Left Arrow -->
-    <button onclick={options.vertical? nextPage : prevPage} aria-label={options.vertical? "Next Page" : "Prev Page"} class="w-12 absolute left-0 flex items-center justify-center text-neutral-500 hover:bg-linear-[to_right,#333,transparent] h-screen z-10">
-        <svg class="w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-            <path fill="currentColor" d="m4 10l9 9l1.4-1.5L7 10l7.4-7.5L13 1z" />
-        </svg>
-    </button>
-    <!-- Right Arrow -->
-    <button onclick={options.vertical? prevPage : nextPage} aria-label={options.vertical? "Prev Page" : "Next Page"} class="w-12 absolute right-0 flex items-center justify-center text-neutral-500 hover:bg-linear-[to_left,#333,transparent] h-screen z-10">
-        <svg class="w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-            <path fill="currentColor" d="M7 1L5.6 2.5L13 10l-7.4 7.5L7 19l9-9z" />
-        </svg>
-    </button>
-{/if}
-
-
-
-<div
-    bind:this={book_container} 
-    bind:offsetHeight={book_container_offHeight}
-    bind:offsetWidth={book_container_offWidth}
-    class="jiku-book-container {bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb!"} {options.paginated? "paginated overflow-hidden": "px-12 py-12 overflow-scroll!"} h-screen w-[calc(100vw-2*var(--book-x-margin))]! pt-14 pb-12 bg-neutral-800!" 
-    style="{options.paginated? "--book-x-margin: 2rem;" : ""} --forced-line-height: {options.line_height}; font-size: {options.font_size}px"
->
-    {#if content}
-        <BookRender {content} onUpdateCallback={onBookContentUpdate}/>
-    {:else}
-        <div class="w-screen h-screen flex items-center justify-center">
-            <div>Loading...</div>
-        </div>
-    {/if}
-</div>
-
-
-
-<div class="h-8 w-full fixed bottom-0 z-10">
-    {#if options.show_progress_tokens}
-        <span class="absolute rounded text-neutral-500 {options.vertical? "left-2": "right-2"}">{curr_token} / {total_tokens}</span>
-    {/if}
-    {#if options.show_progress_bar}
-        <div class="h-2 {options.limit_progress_to_section? "bg-mist-700": "bg-emerald-800"} absolute bottom-0 {options.vertical? "right-0 rounded-l-full": "left-0 rounded-r-full"} transition-[width] duration-200" style="width:{book_container_scrollPercent}%"></div>
-    {/if}
 </div>
 
 <style>
     :root {
-        --book-x-margin: 0rem;
         --forced-line-height: 2;
     }
 
@@ -504,6 +522,15 @@
         line-height: var(--forced-line-height) !important;
     }
 
+    .jiku-book-container {
+        --book-x-margin: 3rem;
+        --book-margin-top: 1rem;
+        --book-margin-bottom: 3rem;
+        margin-top: var(--book-margin-top);
+        margin-left: var(--book-x-margin);
+        margin-right: var(--book-x-margin);
+    }
+
     .paginated:not(.vert-rl) {
         --custom-gap: 3rem;
         column-gap: var(--custom-gap);
@@ -513,17 +540,17 @@
     }
 
     .paginated.vert-rl {
-        --custom-gap: 7rem;
+        --custom-gap: 0rem;
         column-gap: var(--custom-gap);
         /* column-width: calc(100vh - var(--custom-gap)); */
         column-count: 1;
         padding-inline: calc(var(--custom-gap) / 2);
     }
 
-    .paginated {
+    /* .paginated {
         margin-left: var(--book-x-margin);
         margin-right: var(--book-x-margin);
-    }
+    } */
 
 
 </style>

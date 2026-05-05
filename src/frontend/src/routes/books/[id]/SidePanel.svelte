@@ -2,13 +2,19 @@
     import { clickOutside } from "$lib/utils/clickOutside";
     import { fly } from "svelte/transition";
 
-    let { book, onoutsideclick } = $props();
+    let { book, onoutsideclick, updatePosition } = $props();
 
     let tab: "toc" | "spine" | "bookmarks" = $state("toc");
 
 </script>
 
-<div transition:fly={{x:-320, duration:200, opacity:0.5}} use:clickOutside={"button[title=TOC]"} {onoutsideclick} class="absolute top-11 w-80 bg-neutral-800 border-neutral-600 h-[calc(100vh-2.75rem)] overflow-scroll z-20">
+<div
+    transition:fly={{x:-320, duration:200, opacity:0.5}}
+    use:clickOutside={"button[title=TOC]"}
+    {onoutsideclick}
+    class="absolute top-0 w-80 bg-neutral-800 border-neutral-600 h-full overflow-scroll z-20"
+>
+    
     <div id="tabs" class="mt-4 mb-4 mx-4 py-3 bg-[#1B1B1B] rounded-full border border-neutral-900 sticky top-0 flex items-center justify-evenly gap-5 font-semibold text-sm">
         <button title="TOC" onclick={() => { tab = "toc" }} class="{(tab == "toc")?"underline underline-offset-4":""}">
             TOC
@@ -22,22 +28,35 @@
             Bookmarks
         </button>
     </div>
+
     {#if tab == "toc"}
         <ul>
         {#each book.toc as entry}
-            <li>{entry.title}</li>
+            <li>
+                <button onclick={() => { updatePosition(entry.section) }}>
+                    {entry.title}
+                </button>
+            </li>
         {/each}
         </ul>
     {:else if tab == "spine"}
         <ul>
         {#each book.spine as entry}
-            <li>{entry}</li>
+            <li>
+                <button onclick={() => { updatePosition(entry) }}>
+                    {entry}
+                </button>
+            </li>
         {/each}
         </ul>
     {:else}
         <ul>
         {#each book.bookmarks as entry}
-            <li>{entry.name}</li>
+            <li>
+                <button onclick={() => { updatePosition(entry.section, entry.tok_pos) }}>
+                    {entry.name}
+                </button>
+            </li>
         {/each}
         </ul>
     {/if}
@@ -48,6 +67,11 @@
 
 button {
     cursor: pointer;
+}
+
+li > button {
+    width: 100%;
+    text-align: left;
 }
 
 ul {

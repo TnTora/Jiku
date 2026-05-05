@@ -3,7 +3,7 @@
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 </script>
 
-<div class="bg-neutral-800 h-11 w-full fixed top-0 grid grid-cols-[1fr_auto_1fr] items-center gap-x-1.5 z-20">
+<div class="bg-neutral-800 h-11 w-full grid grid-cols-[1fr_auto_1fr] items-center gap-x-1.5 z-20">
     <div class="h-full flex justify-start gap-4 ml-4 items-center">
         <button class="{btn_shared_classes}" title="TOC" onclick={toggleSidePanel}>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8" viewBox="0 0 24 24">

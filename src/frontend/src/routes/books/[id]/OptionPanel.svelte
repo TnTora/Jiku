@@ -18,7 +18,7 @@
 <div
     use:clickOutside={"button[title=Options]"}
     {onoutsideclick}
-    class="w-[25rem] max-w-screen grid grid-cols-[auto_auto] items-center justify-between gap-2 px-4 py-4 fixed top-13 right-3 z-20 bg-[#1B1B1B] border border-neutral-900 rounded-2xl"
+    class="w-100 max-w-screen grid grid-cols-[auto_auto] items-center justify-between gap-2 px-4 py-4 absolute top-2 right-3 z-20 bg-[#1B1B1B] border border-neutral-900 rounded-2xl"
 >
     <h2 class="{header_style}" style="margin-top:0;">Layout</h2>
 
