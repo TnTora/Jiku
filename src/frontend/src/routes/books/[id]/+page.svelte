@@ -55,6 +55,7 @@
     let bookmarking = $state(false);
     let show_bookmarking_confirmation = $state(false);
     let bookmark_selection: number | null = null;
+    let bookmark_selection_name: str | null = null;
 
     let book_container: HTMLDivElement;
     let book_container_offHeight: number = $state(0);
@@ -90,7 +91,7 @@
 
 
     async function loadSectionContent(name:string) {
-        const res = await fetch(`http://127.0.0.1:8000/books/1/${name}`);
+        const res = await fetch(`http://127.0.0.1:8000/books/${book.id}/${name}`);
         curr_section = name;
 	    content = await res.json();
     }
@@ -277,6 +278,21 @@
         document.addEventListener("click", handleClick, true);
     };
 
+    function addBookmark() {
+        book.bookmarks.push({
+            name: bookmark_selection_name,
+            preview: "Testing Preview",
+            section: curr_section,
+            tok_pos: bookmark_selection,
+        });
+    }
+
+    function cancelBookmarking() {
+        show_bookmarking_confirmation = false;
+        bookmark_selection_name = null;
+        bookmark_selection = null;
+    }
+
     function onBookContentUpdate() {
         if (backward_load) {
             scrollToPosition(getScrollLength(book_container));
@@ -290,7 +306,7 @@
     }
 
     async function jumpToToken(token: number) {
-        if (token < 0 || token > book.stats.total_tokens) {
+        if (token <= 0 || token > book.stats.total_tokens) {
             return;
         }
 
@@ -304,10 +320,7 @@
             let mid = start + Math.floor((end-start)/2);
             // console.log(start, end);
             // console.log("mid", mid, book.sections[book.spine[mid]].key, book.sections[book.spine[mid]].start_tok);
-            if (book.sections[book.spine[mid]].start_tok == token) {
-                section = book.sections[book.spine[mid]].key;
-                break;
-            } else if (book.sections[book.spine[mid]].start_tok > token) {
+            if (book.sections[book.spine[mid]].start_tok > token) {
                 end = mid - 1;
             } else {
                 section = book.sections[book.spine[mid]].key;
@@ -350,7 +363,28 @@
 {/if}
 
 {#if show_side_panel}
-    <SidePanel {book} onoutsideclick={() => { show_side_panel = false }} />
+    <SidePanel
+        {book}
+        onoutsideclick={() => { show_side_panel = false }} 
+        updatePosition={async (section: string, token: number | null = null) => {
+            backward_load = false;
+            if (section != curr_section) {
+                await loadSectionContent(section);
+                curr_token_abs = book.sections[section].start_tok;
+            }
+
+            await tick();
+
+            if (token) {
+                let token_span = book_container.querySelector(`span[data-tok='${token}'`);
+                // console.log(token_span);
+                scrollToPosition(getInlineOffset(token_span as HTMLElement));
+                curr_token_abs = token;
+            } else {
+                scrollToPosition(0);
+            }
+        }}
+    />
 {/if}
 
 {#if show_jump_to}
@@ -359,7 +393,10 @@
         class="absolute w-40 top-13 right-3 z-20 bg-[#1B1B1B] border border-neutral-900 rounded-2xl flex flex-col items-center justify-evenly gap-3 py-3"
     >
         <span>Jump To Token</span>
-        <input bind:value={jump_to_value} type="number" class="w-25 bg-neutral-800 rounded-md text-center hide-input-spinners">
+        <div class="flex flex-col items-center gap-0.5">
+            <input bind:value={jump_to_value} type="number" class="w-25 bg-neutral-800 rounded-md text-center hide-input-spinners">
+            <span class="text-xs text-neutral-400">of {book.stats.total_tokens}</span>
+        </div>
         <button 
             title="Jump"
             class="px-3 py-1 bg-neutral-800 rounded-full text-sm font-semibold cursor-pointer hover:bg-neutral-700 active:bg-neutral-600"
@@ -383,14 +420,20 @@
     <div class="w-full h-full bg-neutral-800/90 absolute flex items-center justify-center">
         <div class="p-4 bg-[#1B1B1B] border border-neutral-900 rounded-2xl flex flex-col text-center items-center justify-center gap-3">
             <p>Choose a name</p>
-            <input type="text" defaultvalue="Bookmark {book.bookmarks.length + 1}" class="text-center bg-neutral-800 rounded-md">
+            <input bind:value={bookmark_selection_name} type="text" defaultvalue="Bookmark {book.bookmarks.length + 1}" class="text-center bg-neutral-800 rounded-md">
             <div class="flex items-center justify-evenly gap-4">
-                <button class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600">Ok</button>
-                <button class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600"
+                <button
+                    class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600"
                     onclick={() => {
-                        show_bookmarking_confirmation = false;
-                        bookmark_selection = null;
-                    }}>
+                        addBookmark();
+                        cancelBookmarking();
+                    }}
+                >
+                    Ok
+                </button>
+                <button
+                    class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600"
+                    onclick={cancelBookmarking}>
                     Cancel
                 </button>
             </div>
@@ -464,14 +507,16 @@
     .paginated:not(.vert-rl) {
         --custom-gap: 3rem;
         column-gap: var(--custom-gap);
-        column-width: calc(50vw - var(--book-x-margin) - var(--custom-gap));
+        /* column-width: calc(50vw - var(--book-x-margin) - var(--custom-gap)); */
+        column-count: 2;
         padding-inline: calc(var(--custom-gap) / 2);
     }
 
     .paginated.vert-rl {
         --custom-gap: 7rem;
         column-gap: var(--custom-gap);
-        column-width: calc(100vh - var(--custom-gap));
+        /* column-width: calc(100vh - var(--custom-gap)); */
+        column-count: 1;
         padding-inline: calc(var(--custom-gap) / 2);
     }
 
