@@ -33,7 +33,7 @@
         <ul>
         {#each book.toc as entry}
             <li>
-                <button onclick={() => { updatePosition(entry.section) }}>
+                <button onclick={() => { updatePosition(entry.section, null, entry.anchor_id) }}>
                     {entry.title}
                 </button>
             </li>

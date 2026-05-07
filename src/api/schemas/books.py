@@ -11,6 +11,7 @@ class BookPosition(BaseModel):
 class TocItem(BaseModel):
     title: str
     section: str
+    anchor_id: str | None = None
 
 
 class Bookmark(BookPosition):
@@ -48,11 +49,19 @@ class Book(BaseModel):
     toc: list[TocItem] = []
     bookmarks: list[Bookmark] = []
     metadata: BookMetadata
+    thumb: str | None = None
     original_file: str
     static_url: str
     stats: BookStats
+    last_pos: BookPosition | None = None
 
 
 class BookRespone(BaseModel):
     book: Book
 
+
+class BookInfoResponse(BaseModel):
+    id: int
+    metadata: BookMetadata
+    thumb: str | None = None
+    static_url: str

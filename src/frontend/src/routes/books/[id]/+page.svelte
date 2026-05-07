@@ -381,7 +381,7 @@
             <SidePanel
                 {book}
                 onoutsideclick={() => { show_side_panel = false }} 
-                updatePosition={async (section: string, token: number | null = null) => {
+                updatePosition={async (section: string, token?: number, anchor?: string) => {
                     backward_load = false;
                     if (section != curr_section) {
                         await loadSectionContent(section);
@@ -393,8 +393,22 @@
                     if (token) {
                         let token_span = book_container.querySelector(`span[data-tok='${token}'`);
                         // console.log(token_span);
-                        scrollToPosition(getInlineOffset(token_span as HTMLElement));
+                        if (options.paginated) {
+                            scrollToPosition(getInlineOffset(token_span as HTMLElement));
+                        } else {
+                            token_span?.scrollIntoView();
+                        }
+                        
                         curr_token_abs = token;
+                    } else if (anchor) {
+                        let anchor_el = book_container.querySelector(`#${anchor}`);
+
+                        if (options.paginated) {
+                            scrollToPosition(getInlineOffset(anchor_el as HTMLElement));
+                        } else {
+                            anchor_el?.scrollIntoView();
+                        }
+
                     } else {
                         scrollToPosition(0);
                     }

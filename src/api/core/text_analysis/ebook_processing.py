@@ -1,6 +1,5 @@
 import re
 from collections.abc import Iterator
-from datetime import datetime
 from os import getenv
 from pathlib import Path
 
@@ -10,7 +9,7 @@ import tinycss2
 # from spacy_wrapper import get_analyzer
 from bs4 import BeautifulSoup, NavigableString, PageElement, Tag
 from ebooklib import epub
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from tinycss2.ast import IdentToken, LiteralToken, QualifiedRule
 
 from api.schemas.books import (
@@ -19,8 +18,6 @@ from api.schemas.books import (
     Section,
     BookStats,
     TocItem,
-
-
 )
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
@@ -41,33 +38,83 @@ def process_ebub(filepath: Path, book_id) -> Book:
 
     sections: dict[str, Section] = {}
     spine: list[str] = [section_name for section_name, linear in book.spine if linear]
-    toc: list[TocItem] = [TocItem(title=link.title, section=Path(link.href).stem) for link in book.toc]
+    toc: list[TocItem] = [] # [TocItem(title=link.title, section=Path(link.href).stem) for link in book.toc]
     stats = BookStats()
 
     stylesheets = set()
+
+    cover = None
+
+    documents_id_dict = {}
 
     for stylesheet in book.get_items_of_type(ebooklib.ITEM_STYLE):
         filename = Path(stylesheet.get_name()).name
         process_stylesheet(base_path / "stylesheets" / filename, stylesheet.get_content())
 
-    section_number = 0
+    # section_number = 0
 
     for doc in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
         filename = Path(doc.get_name()).name
         print(filename)
 
         section: Section = process_html_content(base_path / "content" / filename, doc.content, book_id, stats)
-        spine_key = Path(doc.get_name()).stem
-        sections[spine_key] = section
+        section.key = doc.id
+        sections[section.key] = section
 
-        if spine_key in spine:
-            section.number = section_number
-            section_number += 1
+        documents_id_dict[Path(doc.get_name()).stem] = doc.id
+
+        try:
+            section.number = spine.index(section.key)
+        except ValueError:
+            section.number = -1
 
         stylesheets.update(section.stylesheets)
 
+
+    def process_toc(toc_items: list) -> None:
+        for item in toc_items:
+            if isinstance(item, tuple):
+                href_path = Path(item[0].href)
+                anchor_match = re.search(r"(?<=#).+",href_path.suffix)
+                anchor = anchor_match.group() if anchor_match else None
+
+                toc.append(
+                    TocItem(
+                        title=item[0].title,
+                        section=documents_id_dict[href_path.stem],
+                        anchor_id=anchor
+                    )
+                )
+
+                process_toc(item[1])
+
+            else:
+                href_path = Path(item.href)
+                anchor_match = re.search(r"(?<=#).+",href_path.suffix)
+                anchor = anchor_match.group() if anchor_match else None
+                toc.append(
+                    TocItem(
+                        title=item.title,
+                        section=documents_id_dict[href_path.stem],
+                        anchor_id=anchor
+                    )
+                )
+
+
+    process_toc(book.toc)
+
+
+    for img in book.get_items_of_type(ebooklib.ITEM_COVER):
+        cover = Path(img.get_name()).name
+        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
+
+    for img in book.get_items_of_type(ebooklib.ITEM_IMAGE):
+        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
+
+
     metadata = BookMetadata(
         title=book.get_metadata("DC", "title")[0][0],
+        authors=[creator_data[0] for creator_data in book.get_metadata("DC", "creator")],
         raw=book.metadata
     )
 
@@ -78,8 +125,8 @@ def process_ebub(filepath: Path, book_id) -> Book:
         spine=spine,
         toc=toc,
         metadata=metadata,
+        thumb=cover,
         original_file=filepath.name,
-        # static_url="jiku://",
         static_url="http://127.0.0.1:8000/static/books",
         stats=stats
     )
@@ -148,6 +195,16 @@ def process_html_content(filepath: Path, content: bytes, book_id: int, stats: Bo
         # img["src"] = f"jiku://books/{book_id}/images/{filename}"
         img["src"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
 
+    for image in soup.find_all("image"):
+        if "href" in image.attrs:
+            filename = Path(image["href"]).name
+            image["href"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
+        elif "xlink:href" in image.attrs:
+            filename = Path(image["xlink:href"]).name
+            del image["xlink:href"]
+            image["href"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
+
+
 
     section = Section(
         key=filepath.stem,
@@ -185,7 +242,7 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
         if not p_text:
             continue
 
-        tokens = analyzer.parse(p_text, pos_exclude={"SPACE", "PUNCT", "NUM", "SYM", "X"})
+        tokens = analyzer.parse(p_text, pos_exclude={"SPACE", "PUNCT", "SYM", "X"})
         # print(f"{tokens}, {type(tokens)}")
         # print(p_tag, "\n")
         start_ch = stats.total_char
@@ -311,21 +368,28 @@ def handle_ruby(node: Tag, context: TokenizationContext):
     rt: list[str] = []
 
     for child in node.children:
+        if isinstance(child, Tag) and child.name in {"rt", "rp"}:
+            continue
+
+        starting_token = context.curr_token
+
+        if open_tag_idx < 0:
+            open_tag_idx = len(context.new_content)
+            context.new_content.append("<ruby>")
+
+        if isinstance(child.next_sibling, Tag) and child.next_sibling.name == "rt":
+            rt.append(child.next_sibling.get_text())
+
         if isinstance(child, NavigableString):
-            if open_tag_idx < 0:
-                open_tag_idx = len(context.new_content)
-                context.new_content.append("<ruby>")
-
-            if child.next_sibling and child.next_sibling.name == "rt":
-                rt.append(child.next_sibling.get_text())
-
             completed_token = handle_nav_string(child, context)
+        else:
+            handle_html_node(child, context)
 
-            if completed_token:
-                context.new_content.append(f"<rt>{"".join(rt)}</rt>")
-                rt = []
-                context.new_content.append("</ruby>")
-                open_tag_idx = -1
+        if starting_token != context.curr_token:
+            context.new_content.append(f"<rt>{"".join(rt)}</rt>")
+            rt = []
+            context.new_content.append("</ruby>")
+            open_tag_idx = -1
 
     if open_tag_idx >= 0:
         context.new_content.pop(open_tag_idx)
@@ -338,6 +402,17 @@ def handle_ruby(node: Tag, context: TokenizationContext):
 
 
 if __name__ == "__main__":
-    book = process_ebub(Path("test.epub"), 1)
-    print(book.model_dump_json(indent=2))
-    Path("test_epub.json").write_text(book.model_dump_json(indent=2))
+    from pydantic import RootModel
+    Books = RootModel[list[Book]]
+    books = []
+    for i, test_book in enumerate(Path("test_epubs").iterdir()):
+        print(i, test_book)
+        # book = process_ebub(test_book, i+1)
+        try:
+            book = process_ebub(test_book, i+1)
+            books.append(book)
+        except Exception as e:
+            print(e)
+
+    Path("test_epub.json").write_text(Books(books).model_dump_json(indent=2))
+
