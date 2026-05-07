@@ -12,7 +12,7 @@
     let { book } = $derived(data);
 
 
-    let curr_section: string = $state("p-003");
+    let curr_section: string = $state(book.last_pos? book.last_pos.section : book.spine[0]);
 
     let prev_section: string | null = $derived(
         (book.sections[curr_section].number > 0)? book.spine[book.sections[curr_section].number-1]:
@@ -30,10 +30,10 @@
     let backward_load = false;
 
 
-    // $effect(() => {
-    //     console.log(book);
-    //     console.log(prev_section, next_section);
-    // });
+    $effect(() => {
+        console.log(book);
+        console.log(prev_section, next_section);
+    });
 
     let options = $state({
         font_size: 20,
@@ -77,6 +77,7 @@
 
     let section_page: number = 0;
 
+    console.log(curr_section);
 
     let curr_token_abs: number = $state(book.sections[curr_section].start_tok);
     let curr_token_rel: number = $derived(curr_token_abs - book.sections[curr_section].start_tok);
@@ -93,7 +94,7 @@
 
 
     async function loadSectionContent(name:string) {
-        const res = await fetch(`http://127.0.0.1:8000/books/${book.id}/${name}`);
+        const res = await fetch(`http://127.0.0.1:8000/books/id/${book.id}/${name}`);
         curr_section = name;
 	    content = await res.json();
     }
@@ -222,7 +223,15 @@
     )
 
     onMount(() => {
-        loadSectionContent("p-003");
+        if (book.last_pos) {
+            loadSectionContent(book.last_pos.section);
+            if (book.last_pos.tok_pos) {
+                jumpToToken(book.last_pos.tok_pos);
+            }
+        } else {
+            loadSectionContent(book.spine[0]);
+        }
+
         console.log(book_container);
         page_top_par = null;
 
@@ -307,9 +316,11 @@
 
     function onBookContentUpdate() {
         if (backward_load) {
-            scrollToPosition(getScrollLength(book_container));
+            // scrollToPosition(getScrollLength(book_container));
+            book_container.scrollTo(book_container.scrollWidth, book_container.scrollHeight);
         } else {
-            scrollToPosition(0);
+            // scrollToPosition(0);
+            book_container.scrollTo(0, 0);
         }
 
         intersection_observer.disconnect();
@@ -349,8 +360,14 @@
         await tick();
 
         let token_span = book_container.querySelector(`span[data-tok='${token}'`);
+
+        if (!token_span) { return };
         // console.log(token_span);
-        scrollToPosition(getInlineOffset(token_span as HTMLElement));
+        if (options.paginated) {
+            scrollToPosition(getInlineOffset(token_span as HTMLElement));
+        } else {
+            token_span.scrollIntoView();
+        }
         curr_token_abs = token;
 
     }
@@ -359,7 +376,7 @@
 
 <svelte:head>
     {#each book.stylesheets as sheet_file}
-        <link rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/books/{book.id}/stylesheets/{sheet_file}">
+        <link rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/books/{book.id}/stylesheets/{sheet_file}" disabled>
     {/each}
 </svelte:head>
 
@@ -469,17 +486,57 @@
 
         {#if options.paginated}
             <!-- Left Arrow -->
-            <button onclick={options.vertical? nextPage : prevPage} aria-label={options.vertical? "Next Page" : "Prev Page"} class="w-12 absolute left-0 flex items-center justify-center text-neutral-500 hover:bg-linear-[to_right,#333,transparent] h-full z-10">
+            <button 
+                onclick={options.vertical? nextPage : prevPage}
+                aria-label={options.vertical? "Next Page" : "Previous Page"}
+                class="w-12 absolute left-0 flex items-center justify-center text-neutral-500 hover:bg-linear-[to_right,#333,transparent] h-full z-10"
+            >
                 <svg class="w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                     <path fill="currentColor" d="m4 10l9 9l1.4-1.5L7 10l7.4-7.5L13 1z" />
                 </svg>
             </button>
             <!-- Right Arrow -->
-            <button onclick={options.vertical? prevPage : nextPage} aria-label={options.vertical? "Prev Page" : "Next Page"} class="w-12 absolute right-0 flex items-center justify-center text-neutral-500 hover:bg-linear-[to_left,#333,transparent] h-full z-10">
+            <button
+                onclick={options.vertical? prevPage : nextPage}
+                aria-label={options.vertical? "Previous Page" : "Next Page"}
+                class="w-12 absolute right-0 flex items-center justify-center text-neutral-500 hover:bg-linear-[to_left,#333,transparent] h-full z-10"
+            >
                 <svg class="w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                     <path fill="currentColor" d="M7 1L5.6 2.5L13 10l-7.4 7.5L7 19l9-9z" />
                 </svg>
             </button>
+        {:else}
+            <div class="flex gap-1 items-center fixed {options.vertical? "left-4 bottom-11" : "-right-2 bottom-17 -rotate-90"}">
+                <button
+                    title="Next Section"
+                    aria-label="Next Section"
+                    class="w-8 h-8 bg-neutral-900/98 hover:bg-neutral-700 active:bg-neutral-600 flex items-center justify-center rounded-l-lg"
+                    onclick={() => {
+                        if (!next_section) {return};
+                        backward_load = false;
+                        loadSectionContent(next_section);
+                    }}
+                >
+                    <svg class="w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path fill="currentColor" d="m4 10l9 9l1.4-1.5L7 10l7.4-7.5L13 1z" />
+                    </svg>
+                </button>
+
+                <button
+                    title="Previous Section"
+                    aria-label="Previous Section"
+                    class="w-8 h-8 bg-neutral-900/98 hover:bg-neutral-700 active:bg-neutral-600 flex items-center justify-center rounded-r-lg"
+                    onclick={() => {
+                        if (!prev_section) {return};
+                        backward_load = true;
+                        loadSectionContent(prev_section);
+                    }}
+                >
+                    <svg class="w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path fill="currentColor" d="M7 1L5.6 2.5L13 10l-7.4 7.5L7 19l9-9z" />
+                    </svg>
+                </button>
+            </div>
         {/if}
 
 
@@ -513,7 +570,10 @@
                 </div>
             {/if}
             {#if options.show_progress_bar}
-                <div class="h-2 {options.limit_progress_to_section? "bg-mist-700": "bg-emerald-800"} absolute bottom-0 {options.vertical? "right-0 rounded-l-full": "left-0 rounded-r-full"} transition-[width] duration-200" style="width:{book_container_scrollPercent}%"></div>
+                <div 
+                    class="h-2 {options.limit_progress_to_section? "bg-mist-700": "bg-emerald-800"} absolute bottom-0 {options.vertical? "right-0 rounded-l-full": "left-0 rounded-r-full"} transition-[width] duration-200"
+                    style="width:{book_container_scrollPercent}%"
+                ></div>
             {/if}
         </div>
 
@@ -534,6 +594,11 @@
 
     :global .jiku-book-container p {
         line-height: var(--forced-line-height) !important;
+    }
+
+    :global .jiku-book-container img,
+    :global .jiku-book-container image {
+        max-height: calc(100% - var(--book-margin-top) - var(--book-margin-bottom));
     }
 
     .jiku-book-container {
