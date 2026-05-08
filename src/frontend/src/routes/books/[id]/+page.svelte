@@ -30,11 +30,6 @@
     let backward_load = false;
 
 
-    $effect(() => {
-        console.log(book);
-        console.log(prev_section, next_section);
-    });
-
     let options = $state({
         font_size: 20,
         line_height: 2.25,
@@ -74,6 +69,24 @@
     
     let page_top_par: HTMLParagraphElement | null;
     let skip_intersection: boolean = false;
+
+    let stylesheets_elements = new Array<HTMLLinkElement>(book.stylesheets.length);
+
+    $effect(() => {
+        console.log(book);
+        console.log(prev_section, next_section);
+
+        stylesheets_elements.forEach((el) => {
+            if (!el) {return};
+
+            if (book.sections[curr_section].stylesheets.includes(el.getAttribute("data-file"))) {
+                el.disabled = false;
+            } else {
+                el.disabled = true;
+            }
+        });
+
+    });
 
     let section_page: number = 0;
 
@@ -375,8 +388,8 @@
 </script>
 
 <svelte:head>
-    {#each book.stylesheets as sheet_file}
-        <link rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/books/{book.id}/stylesheets/{sheet_file}" disabled>
+    {#each book.stylesheets as sheet_file, i}
+        <link bind:this={stylesheets_elements[i]} rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/books/{book.id}/stylesheets/{sheet_file}" data-file="{sheet_file}" disabled>
     {/each}
 </svelte:head>
 
