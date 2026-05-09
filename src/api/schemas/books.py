@@ -1,11 +1,12 @@
+import string
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
 class BookPosition(BaseModel):
     section: str
-    ch_pos: int | None
-    tok_pos: int | None
+    ch_pos: int | None = None
+    tok_pos: int | None = None
 
 
 class TocItem(BaseModel):
@@ -65,3 +66,6 @@ class BookInfoResponse(BaseModel):
     metadata: BookMetadata
     thumb: str | None = None
     static_url: str
+
+class BookLastPosUpdate(BookPosition):
+    id: int

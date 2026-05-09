@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status
 from pathlib import Path
-from api.schemas.books import Book, BookInfoResponse
+from api.schemas.books import Book, BookInfoResponse, BookPosition, BookLastPosUpdate
 
 from os import getenv
 
@@ -35,6 +35,18 @@ def get_section_content(id: int, section_name: str):
     content = content_path.read_text()
     # TODO: replase jiku:// with api url
     return content
+
+
+@router.put(
+    "/update_last_pos",
+    status_code=status.HTTP_202_ACCEPTED)
+def update_last_pos(pos_update: BookLastPosUpdate):
+    book = books[pos_update.id]
+    book.last_pos = BookPosition(
+        section=pos_update.section,
+        tok_pos=pos_update.tok_pos,
+        ch_pos=pos_update.ch_pos,
+    )
 
 @router.get("/all", response_model=list[BookInfoResponse])
 def get_books():
