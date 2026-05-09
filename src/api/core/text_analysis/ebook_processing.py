@@ -10,7 +10,7 @@ import tinycss2
 from bs4 import BeautifulSoup, NavigableString, PageElement, Tag
 from ebooklib import epub
 from pydantic import BaseModel, ConfigDict
-from tinycss2.ast import IdentToken, LiteralToken, QualifiedRule
+from tinycss2.ast import IdentToken, LiteralToken, QualifiedRule, AtRule
 
 from api.schemas.books import (
     Book,
@@ -143,7 +143,11 @@ def process_stylesheet(filepath: Path, content: bytes):
     new_body_class = temp_prelude[3:5]
     new_html_class = temp_prelude[5:7]
 
-    for rule in rules:
+    to_delete = []
+    exclude_at_rules = {"media", "supports", "layer", "scope", "container", "starting-style"}
+    rules_new = []
+
+    for j, rule in enumerate(rules):
         if isinstance(rule, QualifiedRule):
             for i, tok in enumerate(rule.prelude):
                 if isinstance(tok, IdentToken):
@@ -151,12 +155,19 @@ def process_stylesheet(filepath: Path, content: bytes):
                         rule.prelude[i:i+1] = new_html_class
                     elif tok.lower_value == "body":
                         rule.prelude[i:i+1] = new_body_class
-                elif isinstance(tok, LiteralToken) and tok.value == ",":
-                    rule.prelude[i+1:i+1] = book_container_class
-            rule.prelude[0:0] = book_container_class
 
-    filepath.write_text(tinycss2.serialize(rules))
+        elif isinstance(rule, AtRule) and rule.lower_at_keyword not in exclude_at_rules:
+            to_delete.append(j)
+            rules_new.append(rule)
 
+    for i in reversed(to_delete):
+        rules.pop(i)
+
+    book_container_rule = tinycss2.parse_stylesheet(".jiku-book-container{}")[0]
+    book_container_rule.content = rules
+    rules_new.append(book_container_rule)
+
+    filepath.write_text(tinycss2.serialize(rules_new))
 
 
 def process_html_content(filepath: Path, content: bytes, book_id: int, stats: BookStats) -> Section:
