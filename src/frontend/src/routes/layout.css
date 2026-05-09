@@ -3,6 +3,7 @@
 
 .vert-rl .jiku-book-html,
 .vert-rl .jiku-book-body,
+.vert-rl p[data-char-start],
 .vert-rl {
     -webkit-writing-mode: vertical-rl;
     writing-mode: vertical-rl;
@@ -17,6 +18,7 @@
 
 .horz-tb .jiku-book-html,
 .horz-tb .jiku-book-body,
+.horz-tb  p[data-char-start],
 .horz-tb {
     -webkit-writing-mode: horizontal-tb;
     writing-mode: horizontal-tb;

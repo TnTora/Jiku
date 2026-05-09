@@ -401,7 +401,7 @@
             toggleJumpBox={() => {show_jump_to = !show_jump_to}}
             toggleBookmarking={startBookmarking}/>
 
-    <div class="flex-1 h-[calc(100vh-3rem)] relative">
+    <div class="flex-1 h-(--reader-height) relative" style="--reader-height: calc(100vh - 3rem);">
 
         {#if show_options}
             <OptionPanel onoutsideclick={() => { show_options = false }} />
@@ -556,7 +556,7 @@
 
         <div
             bind:this={book_container}
-            class="jiku-book-container {bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb!"} {options.paginated? "paginated overflow-hidden": "overflow-scroll! p-12"} h-[calc(100%-var(--book-margin-top)-var(--book-margin-bottom))] w-[calc(100%-2*var(--book-x-margin))]! bg-neutral-800!" 
+            class="jiku-book-container {bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb"} {options.paginated? "paginated overflow-hidden": "overflow-scroll! p-12"} w-[calc(100%-2*var(--book-x-margin))]! bg-neutral-800!" 
             style="--forced-line-height: {options.line_height}; font-size: {options.font_size}px; {options.paginated? "": "--book-x-margin: 0rem; --book-margin-top: 0rem; --book-margin-bottom: 0rem;"}"
         >
             {#if content}
@@ -596,6 +596,7 @@
 <style>
     :root {
         --forced-line-height: 2;
+        --reader-height: calc(100vh - 3rem);
     }
 
     :global .bookmarking span:hover{
@@ -610,25 +611,47 @@
     }
 
     :global .jiku-book-container img,
-    :global .jiku-book-container image {
-        max-height: calc(100% - var(--book-margin-top) - var(--book-margin-bottom));
+    :global .jiku-book-container image,
+    :global .jiku-book-container svg {
+        max-height: var(--book-container-height) !important;
+    }
+
+    :global .jiku-book-body,
+    :global .jiku-book-html {
+        background-color: var(--color-neutral-800) /* oklch(26.9% 0 0) = #262626 */ !important;
+        color: var(--color-neutral-200) !important;
     }
 
     .jiku-book-container {
         --book-x-margin: 3rem;
         --book-margin-top: 1rem;
         --book-margin-bottom: 3rem;
+        --book-container-height: calc(var(--reader-height) - var(--book-margin-top) - var(--book-margin-bottom));
         margin-top: var(--book-margin-top);
         margin-left: var(--book-x-margin);
         margin-right: var(--book-x-margin);
+        height: var(--book-container-height);
+        max-height: var(--book-container-height)
     }
 
-    .paginated:not(.vert-rl) {
-        --custom-gap: 3rem;
-        column-gap: var(--custom-gap);
-        /* column-width: calc(50vw - var(--book-x-margin) - var(--custom-gap)); */
-        column-count: 2;
-        padding-inline: calc(var(--custom-gap) / 2);
+    @media screen and (width <= 900px) {
+        .paginated:not(.vert-rl) {
+            --custom-gap: 0rem;
+            column-gap: var(--custom-gap);
+            /* column-width: calc(50vw - var(--book-x-margin) - var(--custom-gap)); */
+            column-count: 1;
+            padding-inline: calc(var(--custom-gap) / 2);
+        }
+    }
+
+    @media screen and (width > 900px) {
+        .paginated:not(.vert-rl) {
+            --custom-gap: 3rem;
+            column-gap: var(--custom-gap);
+            /* column-width: calc(50vw - var(--book-x-margin) - var(--custom-gap)); */
+            column-count: 2;
+            padding-inline: calc(var(--custom-gap) / 2);
+        }
     }
 
     .paginated.vert-rl {
