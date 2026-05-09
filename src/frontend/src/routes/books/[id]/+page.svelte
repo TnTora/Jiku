@@ -1,15 +1,19 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { tick } from "svelte";
+    import { getContext } from "svelte";
     import { setEbookReaderOptionsContext } from "./context";
     import { clickOutside } from "$lib/utils/clickOutside.js";
 	import TopBar from "./TopBar.svelte";
     import OptionPanel from "./OptionPanel.svelte";
     import SidePanel from "./SidePanel.svelte";
     import BookRender from "./BookRender.svelte";
+	import { goto } from "$app/navigation";
 
     let { data } = $props();
     let { book } = $derived(data);
+
+    const errors = getContext("errors");
 
 
     let curr_section: string = $state(book.last_pos? book.last_pos.section : book.spine[0]);
@@ -67,7 +71,7 @@
     );
 
     
-    let page_top_par: HTMLParagraphElement | null;
+    let page_first_token_span: HTMLSpanElement | null;
     let skip_intersection: boolean = false;
 
     let stylesheets_elements = new Array<HTMLLinkElement>(book.stylesheets.length);
@@ -180,23 +184,17 @@
     let resize_observer: ResizeObserver;
 
     function observeFirstColElements_paginated(){
-        const elements = book_container.querySelectorAll("p[data-char-start]") as NodeListOf<HTMLParagraphElement>;
+        const elements = book_container.querySelectorAll("span[data-tok]") as NodeListOf<HTMLSpanElement>;
         let previous_offset: number = 0;
-        let page: number = 0;
 
         elements.forEach(el => {
-            const first_tok = el.querySelector("span[data-tok]");
-
-            if (!first_tok) { return };
-
-            const curr_offset = getInlineOffset(first_tok as HTMLElement);
+            const curr_offset = getInlineOffset(el as HTMLElement);
             // console.log(el, curr_offset);
 
             if (curr_offset >= previous_offset) {
-                // console.log(el);
+                // console.log(el, curr_offset, previous_offset);
                 intersection_observer.observe(el);
-                page++;
-                previous_offset = page * book_container_inline_offset;
+                previous_offset = Math.ceil(curr_offset / book_container_inline_offset) * book_container_inline_offset;
             }
         });
 
@@ -204,29 +202,22 @@
     }
 
     function observeFirstColElements_scroll(){
-        const elements = book_container.querySelectorAll("p[data-char-start]") as NodeListOf<HTMLParagraphElement>;
+        const elements = book_container.querySelectorAll("span[data-tok]") as NodeListOf<HTMLSpanElement>;
         let previous_offset: number = 0;
-        let page: number = 0;
 
         elements.forEach(el => {
-            const first_tok = el.querySelector("span[data-tok]");
-
-            if (!first_tok) { return };
-
-            const curr_offset = Math.abs(getBlockOffset(first_tok as HTMLElement));
+            const curr_offset = Math.abs(getBlockOffset(el as HTMLElement));
             // console.log("scroll", el, curr_offset);
 
             if (curr_offset >= previous_offset) {
                 // console.log("scroll", el);
                 intersection_observer.observe(el);
-                page++;
-                previous_offset = page * book_container_block_offset;
+                previous_offset = Math.ceil(curr_offset / book_container_inline_offset) * book_container_block_offset;
             }
         });
 
         // console.log(intersection_observer);
     }
-
     
 
     let observeFirstColElements = $derived(
@@ -235,40 +226,39 @@
         () => {}
     )
 
-    onMount(() => {
-        if (book.last_pos) {
-            loadSectionContent(book.last_pos.section);
-            if (book.last_pos.tok_pos) {
-                jumpToToken(book.last_pos.tok_pos);
-            }
-        } else {
-            loadSectionContent(book.spine[0]);
-        }
 
-        console.log(book_container);
-        page_top_par = null;
+    function handleInitialSetup() {
+        page_first_token_span = book.last_pos?.tok_pos?
+                                book_container.querySelector(`span[data-tok='${book.last_pos.tok_pos}'`):
+                                null;
 
-        book_container_height = book_container.getBoundingClientRect().height;
-        book_container_width = book_container.getBoundingClientRect().width;
+        console.log(page_first_token_span);
 
         intersection_observer = new IntersectionObserver(entries => {
             entries.forEach(entry => {
                 if (entry.isIntersecting && !skip_intersection) {
-                    page_top_par = entry.target as HTMLParagraphElement;
-                    curr_token_abs = Number(entry.target.querySelector("span[data-tok]")?.getAttribute("data-tok"));
+                    page_first_token_span = entry.target as HTMLParagraphElement;
+                    curr_token_abs = Number(entry.target.getAttribute("data-tok"));
 
-                    // console.log(page_top_par);
+                    // console.log(page_first_token_span);
                 }
             })
-        }, {});
+        }, {
+            root: book_container,
+            threshold: 1,
+        });
     
-        let resize_timeout;
+        let resize_timeout: NodeJS.Timeout;
         resize_observer = new ResizeObserver(entries => {
+            if (!book_container) {return}
+
             intersection_observer.disconnect();
             console.log("resizing");
-            if (page_top_par) {
-                // console.log("jumping to ", page_top_par);
-                scrollToPosition(getInlineOffset(page_top_par));
+            if (page_first_token_span) {
+                console.log("jumping to ", page_first_token_span);
+                book_container_height = book_container.getBoundingClientRect().height;
+                book_container_width = book_container.getBoundingClientRect().width;
+                scrollToPosition(getInlineOffset(page_first_token_span));
             }
             clearTimeout(resize_timeout);
             resize_timeout = setTimeout(() => {
@@ -290,7 +280,20 @@
         });
 
         resize_observer.observe(book_container);
-    });
+    }
+
+
+    async function loadInitialSection() {
+        if (book.last_pos) {
+            await loadSectionContent(book.last_pos.section);
+            if (book.last_pos.tok_pos) {
+                console.log("last_pos: ", book.last_pos.tok_pos);
+                await jumpToToken(book.last_pos.tok_pos);
+            }
+        } else {
+            await loadSectionContent(book.spine[0]);
+        }
+    }
 
     function startBookmarking() {
         if (show_bookmarking_confirmation) {return}
@@ -328,6 +331,8 @@
     }
 
     function onBookContentUpdate() {
+        if (!intersection_observer) {return}
+
         if (backward_load) {
             // scrollToPosition(getScrollLength(book_container));
             book_container.scrollTo(book_container.scrollWidth, book_container.scrollHeight);
@@ -385,7 +390,53 @@
 
     }
 
+
+    async function handleClose() {
+        if (page_first_token_span) {
+            let tok_position = page_first_token_span.getAttribute("data-tok");
+            try {
+                const res = await fetch("http://127.0.0.1:8000/books/update_last_pos", {
+                    method: "PUT",
+                    headers: {
+                        "accept": "application/json",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        id: book.id,
+                        section: curr_section,
+                        tok_pos: tok_position,
+                    })
+                });
+            } catch (error) {
+                console.error(`Failed to update book ${book.id} last_pos: `, error);
+                errors.push({
+                    short: `Failed to update book ${book.id} last_pos: `,
+                    details: error,
+                });
+                throw error;
+            }
+        }
+        goto("/books");
+    }
+
+
+    onMount(() => {
+        console.log(book_container);
+        page_first_token_span = null;
+
+        book_container_height = book_container.getBoundingClientRect().height;
+        book_container_width = book_container.getBoundingClientRect().width;
+
+        loadInitialSection()
+        .then(handleInitialSetup);
+
+        return handleClose;
+    });
 </script>
+
+<svelte:window 
+    onbeforeunload = {handleClose}
+></svelte:window>
 
 <svelte:head>
     {#each book.stylesheets as sheet_file, i}
@@ -399,7 +450,8 @@
             toggleOptions={() => {show_options = !show_options}}
             toggleSidePanel={() => {show_side_panel = !show_side_panel}}
             toggleJumpBox={() => {show_jump_to = !show_jump_to}}
-            toggleBookmarking={startBookmarking}/>
+            toggleBookmarking={startBookmarking}
+            onBookClose={() => { goto("/books") }}/>
 
     <div class="flex-1 h-(--reader-height) relative" style="--reader-height: calc(100vh - 3rem);">
 
