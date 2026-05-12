@@ -97,7 +97,7 @@
                     title="Reduce Size"
                     class="w-6 aspect-square text-sm bg-neutral-900 border-neutral-900 hover:bg-neutral-950 active:bg-[#353535] border rounded-lg"
                     onclick={() => {
-                        if (item_size_rem <= 6.5) { return; }
+                        if (item_size_rem <= 8.5) { return; }
                         item_size_rem--;
                     }}
                 >
