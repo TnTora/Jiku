@@ -1,5 +1,11 @@
-export function clickOutside(node: Element, exclude_query: string) {
-    const excluded = document.querySelectorAll(exclude_query);
+export function clickOutside(node: Element, exclude_query: string | null = null) {
+    let excluded;
+    if (exclude_query) {
+        excluded = document.querySelectorAll(exclude_query);
+    } else {
+        excluded = [];
+    }
+        
 
     const handleClick = (event: Event) => {
         if (node.contains(event.target as Node)) {
