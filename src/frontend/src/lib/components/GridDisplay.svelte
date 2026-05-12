@@ -7,7 +7,7 @@
 
 <div class="grid-container px-2 py-2 items-center" style="{item_min_w? `--item-min-w: ${item_min_w};`: ""}">
     {#each items as item}
-        <div class="h-[calc(var(--item-min-w)*1.34)] w-full text-center flex items-center justify-center">
+        <div class="relative h-[calc(var(--item-min-w)*1.34)] w-full text-center flex items-center justify-center">
             <BookGridItem {item}/>
         </div>
     {/each}
