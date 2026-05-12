@@ -149,7 +149,7 @@ input:focus {
     "header header"
     "sidepanel options"
     "sidepanel main"
-    "sidepanel footer";
+    "sidefooter footer";
     transition: all 500ms;
 }
 

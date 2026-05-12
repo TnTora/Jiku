@@ -64,49 +64,6 @@
         {/each}
         </ul>
 
-        <div class="fixed bottom-0 w-80 bg-neutral-800 border-neutral-700 border-t flex items-center justify-between">
-            <div class="px-5 py-1 flex items-center gap-4">
-            {#if editing}
-                <button
-                    title="Cancel Edit"
-                    class="text-sm text-red-700 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
-                    onclick={() => { editing = false; }}
-                >
-                    Cancel
-                </button>
-                <button
-                    title="Confirm Edit"
-                    class="text-sm text-neutral-400 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
-                    onclick={() => { editing = false; }}
-                >
-                    Confirm
-                </button>
-            {:else}
-                <button
-                    title="Edit Collection"
-                    class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
-                    onclick={() => { editing = true; }}
-                >
-                    Edit Collections
-                </button>
-            {/if}
-            </div>
-            <div class="flex items-center">
-                <button
-                    title="Delete Collection"
-                    class="aspect-square h-7 text-sm bg-neutral-900 border-neutral-700 hover:bg-neutral-950 active:bg-[#353535] border"
-                >
-                    -
-                </button>
-                <button
-                    title="New Collection"
-                    class="aspect-square h-7 text-sm bg-neutral-900 border-neutral-700 hover:bg-neutral-950 active:bg-[#353535] border"
-                >
-                    +
-                </button>
-            </div>
-        </div>
-
     {:else if tab == "authors"}
         <ul>
         {#each authors as author}
@@ -120,6 +77,45 @@
     {/if}
 </div>
 
+
+{#if tab == "collections"}
+<div class="bg-neutral-800 border-neutral-700 border-t border-r border-r-neutral-600 flex items-center justify-between" style="grid-area: sidefooter;">
+    <div class="px-5 py-1 flex items-center gap-4">
+    {#if editing}
+        <button
+            title="Cancel Edit"
+            class="text-sm text-red-700 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+            onclick={() => { editing = false; }}
+        >
+            Cancel
+        </button>
+        <button
+            title="Confirm Edit"
+            class="text-sm text-neutral-400 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+            onclick={() => { editing = false; }}
+        >
+            Confirm
+        </button>
+    {:else}
+        <button
+            title="Edit Collection"
+            class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+            onclick={() => { editing = true; }}
+        >
+            Edit Collections
+        </button>
+    {/if}
+    </div>
+    <div class="flex items-center">
+        <button
+            title="New Collection"
+            class="aspect-square h-7 text-sm bg-neutral-900 border-neutral-700 hover:bg-neutral-950 active:bg-[#353535]"
+        >
+            +
+        </button>
+    </div>
+</div>
+{/if}
 
 <style>
 
