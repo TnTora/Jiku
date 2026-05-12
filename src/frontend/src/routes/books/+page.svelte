@@ -1,5 +1,6 @@
 <script lang="ts">
     import { fly } from "svelte/transition";
+    import { SvelteSet } from "svelte/reactivity";
     import GridDisplay from "$lib/components/GridDisplay.svelte";
     import TopBar from "./TopBar.svelte";
     import SidePanel from "./SidePanel.svelte";
@@ -7,9 +8,35 @@
     let  ascending_order: boolean = $state(false);
     let item_size_rem: number = $state(12.5);
     let show_side_panel: boolean = $state(false);
+    let selecting: boolean = $state(false);
+    let selected = new SvelteSet();
+    $effect(() => {
+        // console.log(selecting);
+        // console.log(selected);
+        if (!selecting) {
+            selected.clear();
+        }
+    });
+
+    function onItemClickCapture(item) {
+        return (e) => {
+            if (!selecting) { return; }
+
+            console.log("selected", selected);
+
+            e.stopPropagation();
+            e.preventDefault();
+
+            if (selected.has(item)){
+                selected.delete(item);
+            } else {
+                selected.add(item);
+            }
+        }
+    };
 </script>
 
-<div class="main-container h-screen">
+<div class="main-container h-screen overflow-hidden">
     <div class="h-11 w-full bg-neutral-900" style="grid-area: header;">
         <TopBar bind:show_side_panel={show_side_panel} toggleSidePanel={() => { show_side_panel = !show_side_panel }}/>
     </div>
@@ -41,7 +68,7 @@
             <input
                 type="text"
                 placeholder="Enter Book Title"
-                class="px-3 py-1 text-sm grow shrink min-w-15 bg-neutral-600 border-neutral-700 hover:border-neutral-500 focus:border-neutral-500 border rounded-md"
+                class="px-3 py-1 text-sm grow shrink w-0 bg-neutral-600 border-neutral-700 hover:border-neutral-500 focus:border-neutral-500 border rounded-md"
             >
 
             <button
@@ -116,20 +143,63 @@
     </div>
 
     <div class="overflow-y-scroll" style="grid-area: main;">
-        <GridDisplay items={data.books} item_min_w={`${item_size_rem}rem`}/>
+        <GridDisplay {onItemClickCapture} {selected} items={data.books} item_min_w={`${item_size_rem}rem`}/>
     </div>
 
     <div class="h-8 px-2 py-2 flex items-center justify-between" style="grid-area: footer">
-        <div class="flex items-center justify-start">
-            Left
+        <div class="flex items-center justify-start gap-3">
+        {#if selecting}
+            <button
+                title="Delete"
+                class="text-sm text-red-500 hover:text-red-700 active:text-red-400 hover:cursor-pointer"
+                onclick={() => {
+                    selecting = false;
+                }}
+            >
+                Delete
+            </button>
+            <button
+                title="Add to Collection"
+                class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                onclick={() => {
+                    selecting = false;
+                }}
+            >
+                Add to Collection
+            </button>
+        {/if}
         </div>
-        <div class="flex items-center justify-end">
+        <div class="flex items-center justify-end gap-3">
+        {#if selecting}
+            <button
+                title="Cancel"
+                class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                onclick={() => {
+                    selecting = false;
+                }}
+            >
+                Cancel
+            </button>
+            <button
+                title="Select All"
+                class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                onclick={() => {
+                    data.books.forEach((item) => { selected.add(item); });
+                }}
+            >
+                Select All
+            </button>
+        {:else}
             <button
                 title="Select"
                 class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                onclick={() => {
+                    selecting = true;
+                }}
             >
                 Select
             </button>
+        {/if}
         </div>
     </div>
     
