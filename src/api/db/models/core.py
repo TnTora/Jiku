@@ -31,10 +31,10 @@ class Morpheme(Base):
     notes: Mapped[set[AnkiNote]] = relationship(secondary="ankinote_morpheme", back_populates="morphs")
 
     @property
-    def status(self) -> str:
-        if any(note.status == "known" for note in self.notes):
-            return "known"
-        return "new"
+    def status(self) -> int:
+        if any(note.status == KnownStatus.KNOWN.value for note in self.notes):
+            return KnownStatus.KNOWN.value
+        return KnownStatus.NEW.value
 
 
 class AnkiNote(Base):

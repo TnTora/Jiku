@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 
-type KnownStatus = Literal["unknown", "known", "semi-known"]
+type KnownStatus = Literal[1, 0]
 
 class Morpheme(BaseModel):
     model_config = ConfigDict(from_attributes=True)

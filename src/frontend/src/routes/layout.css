@@ -91,11 +91,15 @@ transform: translateY(-50%);
 
 }
 
-.known {
+span.known {
     --c: blueviolet !important;
 }
 
-.unknown {
+span.new {
+    --c: rgb(23, 149, 233) !important;
+}
+
+span.unknown {
     --c: red !important;
 }
 

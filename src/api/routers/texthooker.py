@@ -1,15 +1,14 @@
-from api.db.models.core import Morpheme, AnkiNoteMorpheme
 from fastapi import APIRouter, status, Depends
 
-# from api.db.models.core import Morpheme
 from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse
 
 from api.db import get_db
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
-from api.db.models.texthooker import Line, LineLineToken
+from api.db.models.texthooker import Line, LineLineToken, LineToken
+from api.db.models.core import AnkiNoteMorpheme, AnkiNote
 
 from typing import Annotated
 
@@ -54,11 +53,20 @@ def correct_line_whitespace(line: str) -> str:
 
 @router.get("/last_session", response_model=LastSessionResponse)
 def last_session(db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(
+    lines = db.execute(
         select(Line)
+    ).scalars().all()
+
+    status_result = db.execute(
+        select(LineToken.lemma, func.max(AnkiNote.status))
+        .join(AnkiNoteMorpheme, LineToken.inflection == AnkiNoteMorpheme.morph_inflection)
+        .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
+        .group_by(LineToken.lemma)
     )
-    lines = result.scalars().all()
-    return {"lines": lines, "status_map": mock_session_map}
+
+    status_map = {lemma: status for lemma, status in status_result}  # noqa: C416
+
+    return {"lines": lines, "status_map": status_map}
 
 @router.post(
     "/new_line",
@@ -89,6 +97,15 @@ def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
 
     db.add_all(tokens)
     db.commit()
+
+    status_result = db.execute(
+        select(LineToken.lemma, func.max(AnkiNote.status))
+        .join(AnkiNoteMorpheme, LineToken.inflection == AnkiNoteMorpheme.morph_inflection and LineToken.inflection.in_(set(tok.inflection for tok in tokens)))
+        .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
+        .group_by(LineToken.lemma)
+    )
+
+    status_map = {lemma: status for lemma, status in status_result}  # noqa: C416
 
     return {"id": new_line.id, "text": new_line.text, "tokens": tokens, "status_map": status_map}
 
