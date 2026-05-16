@@ -23,9 +23,7 @@ from api.schemas.books import (
 from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.schemas.core import Morpheme
 
-config_base = getenv("APPDATA") or getenv("XDG_CONFIG_HOME") or "~/.config"
-config_path = Path(config_base).expanduser() / "jiku"
-config_path.mkdir(parents=True, exist_ok=True)
+from api.core.config import config_path
 
 
 def process_ebub(filepath: Path, book_id) -> Book:

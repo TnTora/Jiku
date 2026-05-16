@@ -4,12 +4,30 @@ from fastapi.staticfiles import StaticFiles
 
 from .routers import texthooker, books
 
-from pathlib import Path
-from os import getenv
+from api.core.config import config_path
 
-config_base = getenv("APPDATA") or getenv("XDG_CONFIG_HOME") or "~/.config"
-config_path = Path(config_base).expanduser() / "jiku"
-config_path.mkdir(parents=True, exist_ok=True)
+################ Logging Setup ###########################################################
+
+import logging
+
+logger = logging.getLogger("app_logger")
+logger.setLevel(logging.DEBUG)
+
+log_path = config_path / "last_run.log"
+fh = logging.FileHandler(str(log_path), mode="w")
+fh.setLevel(logging.DEBUG)
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+
+logger.addHandler(fh)
+logger.addHandler(ch)
+
+##########################################################################################
 
 books_path = config_path / "books"
 books_path.mkdir(exist_ok=True)
