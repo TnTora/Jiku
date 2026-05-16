@@ -1,7 +1,17 @@
-from fastapi import APIRouter, status
-from api.core.text_analysis.utils import Morpheme
+from api.db.models.core import Morpheme, AnkiNoteMorpheme
+from fastapi import APIRouter, status, Depends
+
+# from api.db.models.core import Morpheme
 from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse
+
+from api.db import get_db
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from api.db.models.texthooker import Line, LineLineToken
+
+from typing import Annotated
 
 import re
 
@@ -27,8 +37,8 @@ test_lines = [
     "それでも　やはり宝泉くんは認めないと思います。"
 ]
 
-analyzer = get_analyzer()
-mock_session_lines = [{"id": i, "tokens": list(analyzer.parse(line))} for i, line in enumerate(test_lines)]
+# analyzer = get_analyzer()
+# mock_session_lines = [{"id": i, "text": line, "tokens": list(analyzer.parse(line, line_model=True))} for i, line in enumerate(test_lines)]
 
 #-------------------------------------------------------------------------------
 # utility functions to add whitespace to the new line in order to make
@@ -43,27 +53,44 @@ def correct_line_whitespace(line: str) -> str:
 #-------------------------------------------------------------------------------
 
 @router.get("/last_session", response_model=LastSessionResponse)
-def last_session():
-    return {"lines": mock_session_lines, "status_map": mock_session_map}
+def last_session(db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(Line)
+    )
+    lines = result.scalars().all()
+    return {"lines": lines, "status_map": mock_session_map}
 
 @router.post(
     "/new_line",
     response_model=LineResponse,
     status_code=status.HTTP_201_CREATED
 )
-def add_new_line(line: LineCreate):
+def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
+    new_line = Line(text=line.text)
+    db.add(new_line)
+    db.flush()
+    db.refresh(new_line)
+
     analyzer = get_analyzer()
     tokens = []
     status_map = {}
 
-    for tok in analyzer.parse(correct_line_whitespace(line.text)):
+    for i, tok in enumerate(analyzer.parse(correct_line_whitespace(line.text), line_model=True)):
         tokens.append(tok)
+
+        db.add(LineLineToken(
+            line_id=new_line.id,
+            token_inflection=tok.inflection,
+            order_ref=i,
+        ))
+
         if tok.inflection in mock_session_map:
             status_map[tok.inflection] = mock_session_map[tok.inflection]
 
-    tmp_id = mock_session_lines[-1]["id"]+1 if mock_session_lines else 1
-    mock_session_lines.append({"id": tmp_id, "tokens": tokens})
-    return {"id": tmp_id, "tokens": tokens, "status_map": status_map}
+    db.add_all(tokens)
+    db.commit()
+
+    return {"id": new_line.id, "text": new_line.text, "tokens": tokens, "status_map": status_map}
 
 # @router.put("/update_line") or patch
 # @router.delete("/delete_line")

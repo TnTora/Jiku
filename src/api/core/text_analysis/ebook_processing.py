@@ -1,6 +1,5 @@
 import re
 from collections.abc import Iterator
-from os import getenv
 from pathlib import Path
 
 import ebooklib
@@ -9,7 +8,7 @@ import tinycss2
 # from spacy_wrapper import get_analyzer
 from bs4 import BeautifulSoup, NavigableString, PageElement, Tag
 from ebooklib import epub
-from pydantic import BaseModel, ConfigDict
+from dataclasses import dataclass, field
 from tinycss2.ast import IdentToken, LiteralToken, QualifiedRule, AtRule
 
 from api.schemas.books import (
@@ -21,7 +20,7 @@ from api.schemas.books import (
 )
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
-from api.schemas.core import Morpheme
+from api.db.models.core import Morpheme
 
 from api.core.config import config_path
 
@@ -230,15 +229,14 @@ def process_html_content(filepath: Path, content: bytes, book_id: int, stats: Bo
     return section
 
 
-class TokenizationContext(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
+@dataclass
+class TokenizationContext:
     tokens: Iterator[Morpheme]
-    new_content: list[str] = []
     curr_token: Morpheme | None
     partial_match_end_idx: int
     stats: BookStats
     p_tag: Tag
+    new_content: list[str] = field(default_factory=list)
 
 
 def content_tokenization(soup: BeautifulSoup, stats: BookStats):
@@ -251,7 +249,7 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
         if not p_text:
             continue
 
-        tokens = analyzer.parse(p_text, pos_exclude={"SPACE", "PUNCT", "SYM", "X"})
+        tokens = analyzer.parse(p_text, pos_exclude={"SPACE", "PUNCT", "SYM", "X"}, line_model=False)
         # print(f"{tokens}, {type(tokens)}")
         # print(p_tag, "\n")
         start_ch = stats.total_char

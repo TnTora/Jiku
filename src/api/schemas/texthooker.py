@@ -5,6 +5,7 @@ from .core import Morpheme, KnownStatus
 
 class LineBase(BaseModel):
     id: int
+    text: str
     tokens: list[Morpheme]
 
 class LineCreate(BaseModel):
@@ -14,6 +15,7 @@ class LineResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    text: str
     tokens: list[Morpheme]
     status_map: dict[str, KnownStatus]
 

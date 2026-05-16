@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from api.db import Base, engine
+
+
 from .routers import texthooker, books
 
 from api.core.config import config_path
@@ -31,6 +34,8 @@ logger.addHandler(ch)
 
 books_path = config_path / "books"
 books_path.mkdir(exist_ok=True)
+
+Base.metadata.create_all(engine)
 
 app = FastAPI()
 

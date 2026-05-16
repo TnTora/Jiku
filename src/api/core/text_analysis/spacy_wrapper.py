@@ -1,7 +1,11 @@
+from typing import Literal, overload
 from collections.abc import Iterable, Iterator
 import spacy
 from spacy.cli import download
-from api.schemas.core import Morpheme
+from api.db.models.core import Morpheme
+from api.db.models.texthooker import LineToken
+
+
 
 import threading
 
@@ -20,18 +24,18 @@ class SpacyAnalyzer:
         else:
             self.nlp = spacy.load(model_name)
 
-    def _parse(self, text:str) -> Iterator[Morpheme]:
+    def _parse(self, text:str, model: type[Morpheme] | type[LineToken] = Morpheme) -> Iterator[Morpheme | LineToken]:
         with SpacyAnalyzer.LOCK:
             doc = self.nlp(text)
         for token in doc:
-            yield Morpheme(
+            yield model(
                 lemma=token.lemma_,
                 inflection=token.text,
                 pos=token.pos_,
                 tag=token.tag_,
             )
 
-    def _filtered_parse(self, text: str, pos_exclude: Iterable[str]) -> Iterator[Morpheme]:
+    def _filtered_parse(self, text: str, pos_exclude: Iterable[str], model: type[Morpheme] | type[LineToken] = Morpheme) -> Iterator[Morpheme | LineToken]:
         with SpacyAnalyzer.LOCK:
             doc = self.nlp(text)
         for token in doc:
@@ -39,17 +43,26 @@ class SpacyAnalyzer:
             if token.pos_ in pos_exclude:
                 continue
 
-            yield Morpheme(
+            yield model(
                 lemma=token.lemma_,
                 inflection=token.text,
                 pos=token.pos_,
                 tag=token.tag_,
             )
 
-    def parse(self, text: str, pos_exclude: Iterable[str] | None = None) -> Iterator[Morpheme]:
+    @overload
+    def parse(self, text: str, pos_exclude: Iterable[str] | None = None, *, line_model:  Literal[False]) -> Iterator[Morpheme]:
+        ...
+
+    @overload
+    def parse(self, text: str, pos_exclude: Iterable[str] | None = None, *, line_model:  Literal[True]) -> Iterator[LineToken]:
+        ...
+
+    def parse(self, text: str, pos_exclude: Iterable[str] | None = None, *, line_model: bool = False) -> Iterator[Morpheme | LineToken]:
+        model = LineToken if line_model else Morpheme
         if pos_exclude is None:
-            return self._parse(text)
-        return self._filtered_parse(text, pos_exclude)
+            return self._parse(text, model)
+        return self._filtered_parse(text, pos_exclude, model)
 
 
 
