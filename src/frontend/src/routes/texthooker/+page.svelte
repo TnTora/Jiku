@@ -137,7 +137,7 @@ function toggleWebSocket() {
     };
 
     if (ws == null) {
-        ws = new WebSocket("ws://localhost:6677");
+        ws = new WebSocket(options.websocket_url);
 
         ws.addEventListener('open', () => {
             ws_connected = true;
