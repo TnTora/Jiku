@@ -86,6 +86,38 @@ async function processNewLine(new_line: string) {
 
 }
 
+async function deleteLine(line_id: number) {
+    try {
+        const res = await fetch(`http://127.0.0.1:8000/texthooker/line/${line_id}`, {
+            method: "DELETE",
+        });
+    } catch (error) {
+        console.error("Error deleting line: ", error);
+        errors.push({
+            short: "Error deleting line",
+            details: error,
+        });
+        throw error;
+    }
+
+}
+
+async function clearAllLines(line_id: number) {
+    try {
+        const res = await fetch(`http://127.0.0.1:8000/texthooker/clear_lines`, {
+            method: "DELETE",
+        });
+    } catch (error) {
+        console.error("Error clearing lines: ", error);
+        errors.push({
+            short: "Error clearing lines",
+            details: error,
+        });
+        throw error;
+    }
+
+}
+
 function addNewLine(new_line: string) {
     let tmp = {
         id: -1,
@@ -137,7 +169,7 @@ function toggleWebSocket() {
 }
 </script>
 
-<TopBar {toggleWebSocket} {ws_connected} toggleOptions={() => {show_options = !show_options}}/>
+<TopBar {toggleWebSocket} {ws_connected} {clearAllLines} toggleOptions={() => {show_options = !show_options}}/>
 
 {#if show_options}
     <OptionPanel onoutsideclick={() => {show_options = false}}/>
@@ -154,7 +186,11 @@ function toggleWebSocket() {
 <div bind:this={text_container} class="relative pt-10 pb-6 w-full h-screen overflow-scroll {options.vertical? "vert-rl pl-5 pr-2": ""}">
     <!-- last session lines -->
     {#each lines as line}
-        <TexthookerLine {line} {status_map} delete_func={() => { lines = lines.filter( e => e.id !== line.id)}} />
+        <TexthookerLine {line} {status_map}
+            delete_func={() => {
+                lines = lines.filter( e => e.id !== line.id);
+                deleteLine(line.id);
+            }} />
     {/each}
 
     <!-- lines added during current session -->
@@ -165,7 +201,12 @@ function toggleWebSocket() {
             class="my-1 py-1 px-5 whitespace-pre-wrap"
             style="font-size: {options.font_size}px;">{line.raw}</p>
         {:then line} 
-            <TexthookerLine {line} {status_map} delete_func={ () => { new_lines = new_lines.filter( e => e.id !== line.id )} }/>
+            <TexthookerLine {line} {status_map} 
+                delete_func={ () => { 
+                    new_lines = new_lines.filter( e => e.id !== line.id );
+                    deleteLine(line.id);
+                } }
+            />
         {/await}
     {/each}
 </div>
