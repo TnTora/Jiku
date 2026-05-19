@@ -1,4 +1,3 @@
-import string
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
@@ -23,7 +22,7 @@ class Bookmark(BookPosition):
 class BookMetadata(BaseModel):
     title: str
     authors: list[str] = []
-    last_modified: datetime = Field(default_factory=datetime.now)
+    # last_modified: datetime = Field(default_factory=datetime.now)
     raw: dict
 
 
@@ -44,16 +43,24 @@ class Section(BaseModel):
 
 class Book(BaseModel):
     id: int
+
+    title: str
+    creators_names: list[str] = []
+    raw_metadata: dict | None
+
     sections: dict[str, Section]
     stylesheets: list[str]
     spine: list[str]
     toc: list[TocItem] = []
     bookmarks: list[Bookmark] = []
-    metadata: BookMetadata
+
     thumb: str | None = None
     original_file: str
     static_url: str
-    stats: BookStats
+
+    total_char: int = Field(ge=0, default=0)
+    total_tokens: int = Field(ge=0, default=0)
+
     last_pos: BookPosition | None = None
 
 
@@ -63,7 +70,8 @@ class BookRespone(BaseModel):
 
 class BookInfoResponse(BaseModel):
     id: int
-    metadata: BookMetadata
+    title: str
+    creators: list[str] = []
     thumb: str | None = None
     static_url: str
 

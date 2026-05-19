@@ -101,7 +101,7 @@
     let curr_token: number = $derived(options.limit_progress_to_section? curr_token_rel: curr_token_abs);
     let total_tokens: number = $derived(
         (options.limit_progress_to_section && next_section)? book.sections[next_section].start_tok - book.sections[curr_section].start_tok:
-        book.stats.total_tokens
+        book.total_tokens
     );
 
 
@@ -347,7 +347,7 @@
     }
 
     async function jumpToToken(token: number) {
-        if (token <= 0 || token > book.stats.total_tokens) {
+        if (token <= 0 || token > book.total_tokens) {
             return;
         }
 
@@ -439,6 +439,7 @@
 ></svelte:window>
 
 <svelte:head>
+    <link rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/shared/morph_status.css">
     {#each book.stylesheets as sheet_file, i}
         <link bind:this={stylesheets_elements[i]} rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/books/{book.id}/stylesheets/{sheet_file}" data-file="{sheet_file}" disabled>
     {/each}
@@ -446,7 +447,7 @@
 
 
 <div class="flex flex-col h-screen w-screen">
-    <TopBar title={book.metadata.title}
+    <TopBar title={book.title}
             toggleOptions={() => {show_options = !show_options}}
             toggleSidePanel={() => {show_side_panel = !show_side_panel}}
             toggleJumpBox={() => {show_jump_to = !show_jump_to}}
@@ -506,7 +507,7 @@
                 <span>Jump To Token</span>
                 <div class="flex flex-col items-center gap-0.5">
                     <input bind:value={jump_to_value} type="number" class="w-25 bg-neutral-800 rounded-md text-center hide-input-spinners">
-                    <span class="text-xs text-neutral-400">of {book.stats.total_tokens}</span>
+                    <span class="text-xs text-neutral-400">of {book.total_tokens}</span>
                 </div>
                 <button 
                     title="Jump"

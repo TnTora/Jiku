@@ -9,36 +9,80 @@ import tinycss2
 from bs4 import BeautifulSoup, NavigableString, PageElement, Tag
 from ebooklib import epub
 from dataclasses import dataclass, field
-from tinycss2.ast import IdentToken, LiteralToken, QualifiedRule, AtRule
+from tinycss2.ast import IdentToken, QualifiedRule, AtRule
 
-from api.schemas.books import (
-    Book,
-    BookMetadata,
-    Section,
-    BookStats,
-    TocItem,
-)
+
+from api.schemas.books import BookStats
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.db.models.core import Morpheme
 
 from api.core.config import config_path
+from sqlalchemy.orm import Session
+from api.db import SessionLocal
+from api.db.models.books import (
+    Book,
+    Section,
+    TocItem,
+    CreatorBook,
+    Creator,
+)
+
+from sqlalchemy import select
 
 
-def process_ebub(filepath: Path, book_id) -> Book:
+def process_ebub(filepath: Path, db: Session) -> Book:
     book = epub.read_epub(filepath)
+    spine: list[str] = [section_name for section_name, linear in book.spine if linear]
+
+
+    processed_book = Book(
+        title=book.get_metadata("DC", "title")[0][0],
+        raw_metadata=book.metadata,
+        stylesheets=[],
+        spine=spine,
+        thumb=None,
+        original_file=filepath.name,
+        static_url="http://127.0.0.1:8000/static/books",
+        total_char=0,
+        total_tokens=0,
+    )
+
+    db.add(processed_book)
+    db.flush()
+    db.refresh(processed_book)
+
+    book_id = processed_book.id
+
     base_path = config_path / Path(f"books/{book_id}/")
     base_path.mkdir(parents=True, exist_ok=True)
     (base_path / "stylesheets").mkdir(parents=True, exist_ok=True)
     (base_path / "content").mkdir(parents=True, exist_ok=True)
     (base_path / "images").mkdir(parents=True, exist_ok=True)
 
-    sections: dict[str, Section] = {}
-    spine: list[str] = [section_name for section_name, linear in book.spine if linear]
-    toc: list[TocItem] = [] # [TocItem(title=link.title, section=Path(link.href).stem) for link in book.toc]
+
+    for creator_data in book.get_metadata("DC", "creator"):
+        creator = db.execute(
+            select(Creator).where(Creator.name == creator_data[0])
+        ).scalars().one_or_none()
+
+        if creator is None:
+            creator = Creator(name=creator_data[0])
+
+            db.add(creator)
+            db.flush()
+            db.refresh(creator)
+
+        db.add(CreatorBook(
+            book_id=book_id,
+            creator_id=creator.id,
+        ))
+
+
+    # sections: dict[str, Section] = {}
     stats = BookStats()
 
-    stylesheets = set()
+    stylesheets:set[str] = set()
 
     cover = None
 
@@ -48,15 +92,22 @@ def process_ebub(filepath: Path, book_id) -> Book:
         filename = Path(stylesheet.get_name()).name
         process_stylesheet(base_path / "stylesheets" / filename, stylesheet.get_content())
 
+    # processed_book.stylesheets = list(stylesheets)
     # section_number = 0
 
     for doc in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
         filename = Path(doc.get_name()).name
         print(filename)
 
-        section: Section = process_html_content(base_path / "content" / filename, doc.content, book_id, stats)
+        section: Section = process_html_content(
+            base_path / "content" / filename,
+            doc.content,
+            book_id,
+            stats
+        )
+
         section.key = doc.id
-        sections[section.key] = section
+        # sections[section.key] = section
 
         documents_id_dict[Path(doc.get_name()).stem] = doc.id
 
@@ -67,6 +118,20 @@ def process_ebub(filepath: Path, book_id) -> Book:
 
         stylesheets.update(section.stylesheets)
 
+        db.add(section)
+
+
+    for img in book.get_items_of_type(ebooklib.ITEM_COVER):
+        cover = Path(img.get_name()).name
+        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
+
+    # processed_book.thumb = cover
+
+    for img in book.get_items_of_type(ebooklib.ITEM_IMAGE):
+        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
+
+
+    toc: list[TocItem] = []
 
     def process_toc(toc_items: list) -> None:
         for item in toc_items:
@@ -77,9 +142,11 @@ def process_ebub(filepath: Path, book_id) -> Book:
 
                 toc.append(
                     TocItem(
+                        book_id=book_id,
                         title=item[0].title,
                         section=documents_id_dict[href_path.stem],
-                        anchor_id=anchor
+                        anchor_id=anchor,
+                        number=len(toc)
                     )
                 )
 
@@ -91,42 +158,22 @@ def process_ebub(filepath: Path, book_id) -> Book:
                 anchor = anchor_match.group() if anchor_match else None
                 toc.append(
                     TocItem(
+                        book_id=book_id,
                         title=item.title,
                         section=documents_id_dict[href_path.stem],
-                        anchor_id=anchor
+                        anchor_id=anchor,
+                        number=len(toc)
                     )
                 )
 
 
     process_toc(book.toc)
 
+    processed_book.stylesheets = list(stylesheets)
+    processed_book.thumb = cover
 
-    for img in book.get_items_of_type(ebooklib.ITEM_COVER):
-        cover = Path(img.get_name()).name
-        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
-
-    for img in book.get_items_of_type(ebooklib.ITEM_IMAGE):
-        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
-
-
-    metadata = BookMetadata(
-        title=book.get_metadata("DC", "title")[0][0],
-        authors=[creator_data[0] for creator_data in book.get_metadata("DC", "creator")],
-        raw=book.metadata
-    )
-
-    processed_book = Book(
-        id=book_id,
-        sections=sections,
-        stylesheets=list(stylesheets),
-        spine=spine,
-        toc=toc,
-        metadata=metadata,
-        thumb=cover,
-        original_file=filepath.name,
-        static_url="http://127.0.0.1:8000/static/books",
-        stats=stats
-    )
+    db.add_all(toc)
+    db.commit()
 
     return processed_book
 
@@ -215,7 +262,9 @@ def process_html_content(filepath: Path, content: bytes, book_id: int, stats: Bo
 
 
     section = Section(
+        book_id=book_id,
         key=filepath.stem,
+        number=-1,
         stylesheets = section_stylesheets,
         filename=filepath.name,
         start_ch=stats.total_char+1,
@@ -409,17 +458,18 @@ def handle_ruby(node: Tag, context: TokenizationContext):
 
 
 if __name__ == "__main__":
-    from pydantic import RootModel
-    Books = RootModel[list[Book]]
-    books = []
-    for i, test_book in enumerate(Path("test_epubs").iterdir()):
-        print(i, test_book)
-        # book = process_ebub(test_book, i+1)
-        try:
-            book = process_ebub(test_book, i+1)
-            books.append(book)
-        except Exception as e:
-            print(e)
+    # from pydantic import RootModel
+    # Books = RootModel[list[Book]]
+    with SessionLocal() as db:
+        books = []
+        for i, test_book in enumerate(Path("test_epubs").iterdir()):
+            print(i, test_book)
+            # book = process_ebub(test_book, i+1)
+            try:
+                book = process_ebub(test_book, db)
+                books.append(book)
+            except Exception as e:
+                print(e)
 
-    Path("test_epub.json").write_text(Books(books).model_dump_json(indent=2))
+    # Path("test_epub.json").write_text(Books(books).model_dump_json(indent=2))
 

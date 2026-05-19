@@ -13,12 +13,12 @@
     >
         <div class="relative h-full flex flex-col justify-between {item.thumb? "opacity-0 hover:opacity-100": ""} transition-opacity duration-100">
             <div class="bg-neutral-700/80 text-neutral-300 text-sm h-fit p-1">
-                {item.metadata.title}
+                {item.title}
             </div>
         
             <div class="bg-neutral-700/80 text-neutral-300 text-xs h-fit p-1">
-                {#each item.metadata.authors as author}
-                    {author};
+                {#each item.creators as creator}
+                    {creator};
                 {/each}
             </div>
 
