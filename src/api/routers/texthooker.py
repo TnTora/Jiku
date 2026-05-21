@@ -8,7 +8,7 @@ from api.db import get_db
 from sqlalchemy import select, delete, distinct, func
 from sqlalchemy.orm import Session
 from api.db.models.texthooker import Line, LineLineToken, LineToken
-from api.db.models.core import AnkiNoteMorpheme, AnkiNote
+from api.db.models.core import AnkiNoteMorpheme, AnkiNote, Morpheme
 
 from typing import Annotated
 
@@ -34,11 +34,18 @@ def last_session(db: Annotated[Session, Depends(get_db)]):
         select(Line).order_by(Line.date_added)
     ).scalars().all()
 
+    # status_result = db.execute(
+    #     select(LineToken.lemma, func.max(AnkiNote.status))
+    #     .join(AnkiNoteMorpheme, LineToken.inflection == AnkiNoteMorpheme.morph_inflection)
+    #     .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
+    #     .group_by(LineToken.lemma)
+    # )
     status_result = db.execute(
-        select(LineToken.lemma, func.max(AnkiNote.status))
-        .join(AnkiNoteMorpheme, LineToken.inflection == AnkiNoteMorpheme.morph_inflection)
+        select(Morpheme.lemma, func.max(AnkiNote.status))
+        .join(AnkiNoteMorpheme, Morpheme.inflection == AnkiNoteMorpheme.morph_inflection)
         .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
-        .group_by(LineToken.lemma)
+        .where(Morpheme.lemma.in_(select(LineToken.lemma).distinct()))
+        .group_by(Morpheme.lemma)
     )
 
     status_map = {lemma: status for lemma, status in status_result}  # noqa: C416
@@ -73,7 +80,7 @@ def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
 
     status_result = db.execute(
         select(LineToken.lemma, func.max(AnkiNote.status))
-        .join(AnkiNoteMorpheme, LineToken.inflection == AnkiNoteMorpheme.morph_inflection and LineToken.inflection.in_({tok.inflection for tok in tokens}))
+        .join(AnkiNoteMorpheme, (LineToken.inflection == AnkiNoteMorpheme.morph_inflection) & (LineToken.inflection.in_({tok.inflection for tok in tokens})))
         .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
         .group_by(LineToken.lemma)
     )
