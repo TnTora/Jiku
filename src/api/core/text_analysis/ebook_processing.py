@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from tinycss2.ast import IdentToken, QualifiedRule, AtRule
 
 
-from api.schemas.books import BookStats
+# from api.schemas.books import BookStats
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.db.models.core import Morpheme
@@ -26,9 +26,50 @@ from api.db.models.books import (
     TocItem,
     CreatorBook,
     Creator,
+    BookToken,
+    BookTokenCount,
 )
 
-from sqlalchemy import select
+from sqlalchemy import select, insert
+
+from typing import Any
+
+
+@dataclass
+class BookStats:
+    total_char: int = 0
+    total_tokens: int = 0
+    tokens_count: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+
+def store_tokens_count(book_id:int, tokens_count: dict[str, dict[str, Any]], db: Session) -> None:
+    existing = db.execute(
+        select(BookToken.inflection).where(BookToken.inflection.in_(tokens_count))
+    )
+    db.execute(
+        insert(BookToken),
+        [
+            {
+                "lemma": v["morph"].lemma,
+                "inflection": v["morph"].inflection,
+                "pos": v["morph"].pos,
+                "tag": v["morph"].tag,
+            }
+            for key, v in tokens_count.items() if key not in existing
+        ]
+    )
+
+    db.execute(
+        insert(BookTokenCount),
+        [
+            {
+                "book_id": book_id,
+                "morph_inflection": v["morph"].inflection,
+                "count": v["count"],
+            }
+            for v in tokens_count.values()
+        ]
+    )
 
 
 def process_ebub(filepath: Path, db: Session) -> Book:
@@ -88,6 +129,14 @@ def process_ebub(filepath: Path, db: Session) -> Book:
 
     documents_id_dict = {}
 
+    for img in book.get_items_of_type(ebooklib.ITEM_COVER):
+        cover = Path(img.get_name()).name
+        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
+
+    for img in book.get_items_of_type(ebooklib.ITEM_IMAGE):
+        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
+
+
     for stylesheet in book.get_items_of_type(ebooklib.ITEM_STYLE):
         filename = Path(stylesheet.get_name()).name
         process_stylesheet(base_path / "stylesheets" / filename, stylesheet.get_content())
@@ -95,7 +144,10 @@ def process_ebub(filepath: Path, db: Session) -> Book:
     # processed_book.stylesheets = list(stylesheets)
     # section_number = 0
 
-    for doc in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+    #TODO: Ensure documents are processed in spine order
+    # for doc in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+    for idref in spine:
+        doc = book.get_item_with_id(idref)
         filename = Path(doc.get_name()).name
         print(filename)
 
@@ -120,16 +172,7 @@ def process_ebub(filepath: Path, db: Session) -> Book:
 
         db.add(section)
 
-
-    for img in book.get_items_of_type(ebooklib.ITEM_COVER):
-        cover = Path(img.get_name()).name
-        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
-
-    # processed_book.thumb = cover
-
-    for img in book.get_items_of_type(ebooklib.ITEM_IMAGE):
-        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
-
+    store_tokens_count(book_id, stats.tokens_count, db)
 
     toc: list[TocItem] = []
 
@@ -183,7 +226,7 @@ def process_stylesheet(filepath: Path, content: bytes):
     rules, _ = tinycss2.parse_stylesheet_bytes(content)
 
     temp_prelude = tinycss2.parse_stylesheet(".jiku-book-container .jiku-book-body.jiku-book-html{}")[0].prelude
-    book_container_class = temp_prelude[:3]
+    # book_container_class = temp_prelude[:3]
     new_body_class = temp_prelude[3:5]
     new_html_class = temp_prelude[5:7]
 
@@ -281,11 +324,35 @@ def process_html_content(filepath: Path, content: bytes, book_id: int, stats: Bo
 @dataclass
 class TokenizationContext:
     tokens: Iterator[Morpheme]
-    curr_token: Morpheme | None
+    curr_token: Morpheme = field(init=False)
+    tokens_exhausted: bool = field(init=False)
     partial_match_end_idx: int
     stats: BookStats
     p_tag: Tag
     new_content: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.next_token()
+
+    def next_token(self) -> Morpheme | None:
+        next_token = next(self.tokens, None)
+
+        if next_token is None:
+            self.tokens_exhausted = True
+            return None
+
+        self.curr_token = next_token
+        self.tokens_exhausted = False
+
+        if self.curr_token.inflection.lower() in self.stats.tokens_count:
+            self.stats.tokens_count[self.curr_token.inflection.lower()]["count"] += 1
+        else:
+            self.stats.tokens_count[self.curr_token.inflection.lower()] = {
+                "morph": self.curr_token,
+                "count": 1
+            }
+
+        return next_token
 
 
 def content_tokenization(soup: BeautifulSoup, stats: BookStats):
@@ -307,7 +374,6 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
         tokenization_context = TokenizationContext(
             tokens = tokens,
             new_content = [],
-            curr_token = next(tokens, None),
             partial_match_end_idx = 0,
             stats = stats,
             p_tag = p_tag,
@@ -329,7 +395,7 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
 def handle_html_node(node: PageElement, context: TokenizationContext) -> None:
     # print("node", node)
     # print("handle", context.new_content)
-    if context.curr_token is None:
+    if context.tokens_exhausted:
         context.new_content.append(str(node))
         return
 
@@ -338,11 +404,14 @@ def handle_html_node(node: PageElement, context: TokenizationContext) -> None:
             context.new_content.append(str(node))
             return
 
+        if not isinstance(node, Tag):
+            return
+
         if node.name == "ruby":
             handle_ruby(node, context)
             return
 
-        open_tag = re.search(r"<.*?>", str(node)).group()
+        open_tag = re.search(r"<.*?>", str(node)).group()  # ty:ignore[unresolved-attribute]
         context.new_content.append(open_tag)
 
         for child in node.children:
@@ -366,12 +435,13 @@ def handle_nav_string(node: NavigableString, context: TokenizationContext) -> bo
                     if node.parent is context.p_tag or node.parent.name == "ruby":
                         context.new_content.append("</span>")
                     else:
-                        open_tag = re.search(r"<.*?>", str(node.parent)).group()
+                        open_tag = re.search(r"<.*?>", str(node.parent)).group()  # ty:ignore[unresolved-attribute]
                         context.new_content.append(f"</{node.name}></span>{open_tag}")
-                    context.curr_token = next(context.tokens, None)
+                    # context.curr_token = next(context.tokens, None)
+                    context.next_token()
                     context.partial_match_end_idx = 0
                     i = idx_increment
-                    if context.curr_token is None:
+                    if context.tokens_exhausted:
                         context.new_content.append(node[i:])
                         return True
                 else:
@@ -409,9 +479,10 @@ def handle_nav_string(node: NavigableString, context: TokenizationContext) -> bo
             )
 
             i += match_idx + len(context.curr_token.inflection)
-            context.curr_token = next(context.tokens, None)
+            # context.curr_token = next(context.tokens, None)
+            context.next_token()
 
-            if context.curr_token is None:
+            if context.tokens_exhausted:
                 context.new_content.append(node[i:])
                 return True
 
@@ -437,7 +508,7 @@ def handle_ruby(node: Tag, context: TokenizationContext):
             rt.append(child.next_sibling.get_text())
 
         if isinstance(child, NavigableString):
-            completed_token = handle_nav_string(child, context)
+            handle_nav_string(child, context)
         else:
             handle_html_node(child, context)
 
@@ -468,7 +539,7 @@ if __name__ == "__main__":
             try:
                 book = process_ebub(test_book, db)
                 books.append(book)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(e)
 
     # Path("test_epub.json").write_text(Books(books).model_dump_json(indent=2))
