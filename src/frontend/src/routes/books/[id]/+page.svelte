@@ -8,6 +8,7 @@
     import OptionPanel from "./OptionPanel.svelte";
     import SidePanel from "./SidePanel.svelte";
     import BookRender from "./BookRender.svelte";
+    import ConfirmationPopup from "$lib/components/ConfirmationPopup.svelte";
 	import { goto } from "$app/navigation";
 
     let { data } = $props();
@@ -524,29 +525,17 @@
 
 
         {#if show_bookmarking_confirmation}
-            <div class="w-full h-full bg-neutral-800/90 absolute flex items-center justify-center">
-                <div class="p-4 bg-[#1B1B1B] border border-neutral-900 rounded-2xl flex flex-col text-center items-center justify-center gap-3">
-                    <p>Choose a name</p>
-                    <input bind:value={bookmark_selection_name} type="text" defaultvalue="Bookmark {book.bookmarks.length + 1}" class="text-center bg-neutral-800 rounded-md">
-                    <div class="flex items-center justify-evenly gap-4">
-                        <button
-                            class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600"
-                            onclick={() => {
-                                addBookmark();
-                                cancelBookmarking();
-                            }}
-                        >
-                            Ok
-                        </button>
-                        <button
-                            class="px-3 py-1 w-20 bg-neutral-800 rounded-full text-sm font-semibold hover:bg-neutral-700 active:bg-neutral-600"
-                            onclick={cancelBookmarking}>
-                            Cancel
-                        </button>
-                    </div>
-                    
-                </div>
-            </div>
+            <ConfirmationPopup
+                use_input={true}
+                bind:text_input_value={bookmark_selection_name}
+                text_input_default={`Bookmark ${book.bookmarks.length + 1}`}
+                text="Choose a name"
+                onCacncel={cancelBookmarking}
+                onOk={() => {
+                    addBookmark();
+                    cancelBookmarking();
+                }}
+            />
         {/if}
 
 
