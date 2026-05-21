@@ -1,6 +1,11 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
+:root {
+    --known-color: blueviolet;
+    --new-color: #4b9ed9;
+}
+
 .vert-rl .jiku-book-html,
 .vert-rl .jiku-book-body,
 .vert-rl p[data-char-start],
@@ -64,7 +69,7 @@ transform: translateY(-50%);
 
 .vert-rl .status-underline {
     --w: 0.20rem;   /* the width of the underline */
-    --c: #4b9ed9; /* the default color */
+    --c: red; /* the default color */
     
     /* line-height: calc(.5rem + var(--w)); */
     padding-left: calc(var(--w) + .2rem);
@@ -78,7 +83,7 @@ transform: translateY(-50%);
 
 :not(.vert-rl) .status-underline:not(.vert-rl .status-underline) {
     --h: 0.20rem;     /* the height of the underline */
-    --c: #4b9ed9; /* the default color */
+    --c: red; /* the default color */
     
     /* line-height: calc(1.5rem + var(--h)); */
     padding-bottom: calc(var(--h) + 0.1rem);
@@ -92,15 +97,11 @@ transform: translateY(-50%);
 }
 
 span.known {
-    --c: blueviolet !important;
+    --c: var(--known-color) !important;
 }
 
 span.new {
-    --c: rgb(23, 149, 233) !important;
-}
-
-span.unknown {
-    --c: red !important;
+    --c: var(--new-color) !important;
 }
 
 .hide-input-spinners {

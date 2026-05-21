@@ -12,7 +12,7 @@
 	import { goto } from "$app/navigation";
 
     let { data } = $props();
-    let { book } = $derived(data);
+    let { book, status_map } = $derived(data);
 
     const errors = getContext("errors");
 
@@ -317,6 +317,9 @@
     };
 
     function addBookmark() {
+        console.log(bookmark_selection_name);
+        if (!bookmark_selection_name) { return; }
+
         book.bookmarks.push({
             name: bookmark_selection_name,
             preview: "Testing Preview",
@@ -421,15 +424,38 @@
     }
 
 
+    function createStatusStyle() {
+        const status_style: HTMLStyleElement = document.createElement("style");
+        document.head.appendChild(status_style);
+        
+        const status_sheet: CSSStyleSheet | null = status_style.sheet;
+
+        for ( let [lemma, status] of Object.entries(status_map)) {
+            status_sheet?.insertRule(`
+                .tok-${lemma} {
+                    --c: ${(status == 1)? "var(--known-color)" : "var(--new-color)"} !important;
+                }
+            `);
+        }
+
+        return status_style;
+    }
+
+
+    let status_style: HTMLStyleElement;
+
     onMount(() => {
         console.log(book_container);
         page_first_token_span = null;
 
         book_container_height = book_container.getBoundingClientRect().height;
         book_container_width = book_container.getBoundingClientRect().width;
-
+        
         loadInitialSection()
         .then(handleInitialSetup);
+
+        status_style = createStatusStyle();
+        // console.log("sheet", status_style.sheet);
 
         return handleClose;
     });
@@ -440,7 +466,7 @@
 ></svelte:window>
 
 <svelte:head>
-    <link rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/shared/morph_status.css">
+    <!-- <link rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/shared/morph_status.css"> -->
     {#each book.stylesheets as sheet_file, i}
         <link bind:this={stylesheets_elements[i]} rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/books/{book.id}/stylesheets/{sheet_file}" data-file="{sheet_file}" disabled>
     {/each}
