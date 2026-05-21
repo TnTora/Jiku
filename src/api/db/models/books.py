@@ -46,12 +46,21 @@ class TocItem(Base):
     number: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
+class BookToken(Base):
+    __tablename__ = "bookstokens"
+
+    lemma: Mapped[str] = mapped_column(String, nullable=False)
+    inflection: Mapped[str] = mapped_column(String, primary_key=True, index=True, sqlite_on_conflict_primary_key="IGNORE")
+    pos: Mapped[str] = mapped_column(String, nullable=True)
+    tag: Mapped[str] = mapped_column(String, nullable=True)
+
+
 class BookTokenCount(Base):
     __tablename__ = "booktokencount"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), nullable=False)
-    morph_inflection: Mapped[str] = mapped_column(ForeignKey("morphemes.inflection"), nullable=False)
+    morph_inflection: Mapped[str] = mapped_column(ForeignKey("bookstokens.inflection"), nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False)
 
 

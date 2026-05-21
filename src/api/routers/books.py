@@ -1,10 +1,10 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 
-from api.schemas.books import BookInfoResponse, BookPosition, BookLastPosUpdate
-from api.schemas.books import Book as BookSchema
+from api.schemas.books import BookInfoResponse, BookRespone, BookLastPosUpdate
 
 from api.db import get_db
-from api.db.models.books import Book, Section, LastPosition
+from api.db.models.books import Book, Section, LastPosition, BookToken
+from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme
 
 from sqlalchemy import select, delete, distinct, func
 from sqlalchemy.orm import Session
@@ -31,7 +31,7 @@ from typing import Annotated
 router = APIRouter()
 
 
-@router.get("/id/{id}", response_model=BookSchema)
+@router.get("/id/{id}", response_model=BookRespone)
 def get_book(id: int, db: Annotated[Session, Depends(get_db)]):
     book = db.execute(
         select(Book).where(Book.id == id)
@@ -43,12 +43,22 @@ def get_book(id: int, db: Annotated[Session, Depends(get_db)]):
             detail="Book not found"
         )
 
-    return book
+    status_result = db.execute(
+        select(Morpheme.lemma, func.max(AnkiNote.status))
+        .join(AnkiNoteMorpheme, Morpheme.inflection == AnkiNoteMorpheme.morph_inflection)
+        .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
+        .where(Morpheme.lemma.in_(select(BookToken.lemma).distinct()))
+        .group_by(Morpheme.lemma)
+    )
+
+    status_map = {lemma: status for lemma, status in status_result}  # noqa: C416
+
+    return {"book": book, "status_map": status_map}
 
 @router.get("/id/{id}/{section_name}")
 def get_section_content(id: int, section_name: str, db: Annotated[Session, Depends(get_db)]):
     filename = db.execute(
-        select(Section.filename).where(Section.book_id == id and Section.key == section_name)
+        select(Section.filename).where((Section.book_id == id) & (Section.key == section_name))
     ).scalar()
 
     if filename is None:

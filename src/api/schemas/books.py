@@ -26,10 +26,10 @@ class BookMetadata(BaseModel):
     raw: dict
 
 
-class BookStats(BaseModel):
-    total_char: int = Field(ge=0, default=0)
-    total_tokens: int = Field(ge=0, default=0)
-    tokens_count: dict[str, int] = {}
+# class BookStats(BaseModel):
+#     total_char: int = Field(ge=0, default=0)
+#     total_tokens: int = Field(ge=0, default=0)
+#     tokens_count: dict[str, int] = {}
 
 
 class Section(BaseModel):
@@ -66,6 +66,7 @@ class Book(BaseModel):
 
 class BookRespone(BaseModel):
     book: Book
+    status_map: dict[str, int]
 
 
 class BookInfoResponse(BaseModel):
