@@ -1,23 +1,25 @@
 from typing import Literal, overload
 from collections.abc import Iterable, Iterator
 import spacy
-from spacy.cli import download
+# from spacy.cli import download
 from api.db.models.core import Morpheme
 from api.db.models.texthooker import LineToken
 
-
+import re
 
 import threading
 
 analyzer: "SpacyAnalyzer | None" = None
 
 
+punc_sym_regex = re.compile(r"[^\w\s]+")
+
 class SpacyAnalyzer:
     # Japanese Tokenizer is not thread-safe
     # TODO: Test creating tokenizers for each thread
     LOCK: threading.Lock = threading.Lock()
 
-    def __init__(self, model_name: str, blank: bool = False) -> None:
+    def __init__(self, model_name: str, *, blank: bool = False) -> None:
         self.model_name = model_name
         if blank:
             self.nlp = spacy.blank(model_name)
@@ -42,6 +44,12 @@ class SpacyAnalyzer:
 
             if token.pos_ in pos_exclude:
                 continue
+
+            if punc_sym_regex.match(token.text) and token.pos_ not in ("PUNCT", "SYM"):
+                if any(pos in pos_exclude for pos in ("PUNCT", "SYM")):
+                    continue
+                token.pos_ = "N/A"
+                token.tag_ = "N/A"
 
             yield model(
                 lemma=token.lemma_,
