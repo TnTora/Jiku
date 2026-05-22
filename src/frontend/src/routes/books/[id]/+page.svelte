@@ -409,7 +409,8 @@
                         id: book.id,
                         section: curr_section,
                         tok_pos: tok_position,
-                    })
+                    }),
+                    keepalive: true
                 });
             } catch (error) {
                 console.error(`Failed to update book ${book.id} last_pos: `, error);
@@ -420,7 +421,6 @@
                 throw error;
             }
         }
-        goto("/books");
     }
 
 
