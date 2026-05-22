@@ -214,6 +214,8 @@ def process_ebub(filepath: Path, db: Session) -> Book:
 
     processed_book.stylesheets = list(stylesheets)
     processed_book.thumb = cover
+    processed_book.total_char = stats.total_char
+    processed_book.total_tokens = stats.total_tokens
 
     db.add_all(toc)
     db.commit()
@@ -259,28 +261,30 @@ def process_stylesheet(filepath: Path, content: bytes):
 
 def process_html_content(filepath: Path, content: bytes, book_id: int, stats: BookStats) -> Section:
     soup = BeautifulSoup(content, "html.parser")
-    section_stylesheets = [Path(link["href"]).name for link in soup.find_all("link")]
 
     if soup.head:
+        section_stylesheets = [Path(link["href"]).name for link in soup.head.select("link[rel='stylesheet']")]  # ty:ignore[invalid-argument-type]
         soup.head.decompose()
+    else:
+        section_stylesheets = []
 
     html_tag = soup.html
     if html_tag is not None:
         html_tag.attrs = {key: val for key, val in html_tag.attrs.items() if key in {"class", "id"}}
 
         if html_tag.has_attr("class"):
-            html_tag["class"].append("jiku-book-html")
+            html_tag["class"].append("jiku-book-html")  # ty:ignore[unresolved-attribute]
         else:
-            html_tag["class"] = ["jiku-book-html"]
+            html_tag["class"] = ["jiku-book-html"]  # ty:ignore[invalid-assignment]
 
         html_tag.name = "div"
 
     body_tag = soup.body
     if body_tag is not None:
         if body_tag.has_attr("class"):
-            body_tag["class"].append("jiku-book-body")
+            body_tag["class"].append("jiku-book-body")  # ty:ignore[unresolved-attribute]
         else:
-            body_tag["class"] = ["jiku-book-body"]
+            body_tag["class"] = ["jiku-book-body"]  # ty:ignore[invalid-assignment]
 
         body_tag.name = "div"
 
@@ -289,16 +293,15 @@ def process_html_content(filepath: Path, content: bytes, book_id: int, stats: Bo
             child.decompose()
 
     for img in soup.find_all("img", src=True):
-        filename = Path(img["src"]).name
-        # img["src"] = f"jiku://books/{book_id}/images/{filename}"
+        filename = Path(img["src"]).name  # ty:ignore[invalid-argument-type]
         img["src"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
 
     for image in soup.find_all("image"):
         if "href" in image.attrs:
-            filename = Path(image["href"]).name
+            filename = Path(image["href"]).name  # ty:ignore[invalid-argument-type]
             image["href"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
         elif "xlink:href" in image.attrs:
-            filename = Path(image["xlink:href"]).name
+            filename = Path(image["xlink:href"]).name  # ty:ignore[invalid-argument-type]
             del image["xlink:href"]
             image["href"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
 
@@ -383,9 +386,10 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
 
         new_tag = BeautifulSoup("".join(x for x in tokenization_context.new_content if x), "html.parser").p
 
-        # new_tag.attrs = original_attrs
+        assert new_tag is not None  # noqa: S101
+
         if stats.total_char > start_ch:
-            new_tag["data-char-start"] = start_ch
+            new_tag["data-char-start"] = start_ch  # ty:ignore[invalid-assignment]
 
         p_tag.replace_with(new_tag)
         # print("new_tag", new_tag.prettify(), "\n")
@@ -432,7 +436,7 @@ def handle_nav_string(node: NavigableString, context: TokenizationContext) -> bo
                 context.new_content.append(node[:idx_increment])
                 context.partial_match_end_idx += idx_increment
                 if context.partial_match_end_idx == len(context.curr_token.inflection):
-                    if node.parent is context.p_tag or node.parent.name == "ruby":
+                    if node.parent is context.p_tag or node.parent.name == "ruby":  # ty:ignore[unresolved-attribute]
                         context.new_content.append("</span>")
                     else:
                         open_tag = re.search(r"<.*?>", str(node.parent)).group()  # ty:ignore[unresolved-attribute]
@@ -459,12 +463,12 @@ def handle_nav_string(node: NavigableString, context: TokenizationContext) -> bo
                         context.stats.total_tokens += 1
                         context.stats.total_char += len(context.curr_token.inflection)
                         context.new_content.append(curr_text[:-end])
-                        if node.parent is context.p_tag or node.parent.name == "ruby":
+                        if node.parent is context.p_tag or node.parent.name == "ruby":  # ty:ignore[unresolved-attribute]
                             context.new_content.append(f'<span class="tok-{context.curr_token.lemma} status-underline" data-tok={context.stats.total_tokens}>')
                             context.new_content.append(context.curr_token.inflection[:end])
                         else:
-                            open_tag = re.search(r"<.*?>", str(node.parent)).group()
-                            context.new_content.append(f'</{node.parent.name}><span class="tok-{context.curr_token.lemma} status-underline" data-tok={context.stats.total_tokens}>')
+                            open_tag = re.search(r"<.*?>", str(node.parent)).group()  # ty:ignore[unresolved-attribute]
+                            context.new_content.append(f'</{node.parent.name}><span class="tok-{context.curr_token.lemma} status-underline" data-tok={context.stats.total_tokens}>')  # ty:ignore[unresolved-attribute]
                             context.new_content.append(f"{open_tag}{context.curr_token.inflection[:end]}")
                         return False
                 context.new_content.append(curr_text)
