@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from api.db import Base
 
-from sqlalchemy import Integer, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Integer, String, Text, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship, attribute_keyed_dict
 
 
@@ -20,7 +20,7 @@ class Section(Base):
     stylesheets: Mapped[list[str]] = mapped_column(JSON, nullable=False)
 
 
-class BookMark(Base):
+class Bookmark(Base):
     __tablename__ = "bookmarks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -67,9 +67,8 @@ class BookTokenCount(Base):
 class CreatorBook(Base):
     __tablename__ = "creators_books"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), nullable=False)
-    creator_id: Mapped[int] = mapped_column(ForeignKey("creators.id"), nullable=False)
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), primary_key=True)
+    creator_id: Mapped[int] = mapped_column(ForeignKey("creators.id"), primary_key=True)
 
 
 class Creator(Base):
@@ -87,12 +86,31 @@ class Creator(Base):
 class LastPosition(Base):
     __tablename__ = "lastpositions"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), nullable=False)
+    # id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), primary_key=True, index=True)
 
     section: Mapped[str] = mapped_column(String, nullable=False)
     ch_pos: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tok_pos: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class CollectionBook(Base):
+    __tablename__ = "collections_books"
+
+    collection_id: Mapped[str] = mapped_column(ForeignKey("collections.id"), primary_key=True, nullable=False)
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), primary_key=True, nullable=False)
+
+
+class Collection(Base):
+    __tablename__ = "collections"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+
+    books: Mapped[list[Book]] = relationship(
+        secondary="collections_books",
+        back_populates="collections_",
+    )
 
 
 class Book(Base):
@@ -117,17 +135,22 @@ class Book(Base):
         collection_class=attribute_keyed_dict("key"),
         cascade="all, delete"
     )
+
     toc: Mapped[list[TocItem]] = relationship(order_by=TocItem.number)
-    bookmarks: Mapped[list[BookMark]] = relationship(order_by=BookMark.tok_pos)
+    bookmarks: Mapped[list[Bookmark]] = relationship(order_by=Bookmark.tok_pos)
 
     creators_: Mapped[list[Creator]] = relationship(
         secondary="creators_books",
         back_populates="books"
     )
 
-    last_pos: Mapped[LastPosition] = relationship(cascade="all, delete")
+    collections_: Mapped[list[Collection]] = relationship(
+        secondary="collections_books",
+        back_populates="books",
+    )
 
-    # tokens_count: dict[str, int] = {}
+
+    last_pos: Mapped[LastPosition] = relationship(cascade="all, delete")
 
     @property
     def creators(self) -> list[str]:
