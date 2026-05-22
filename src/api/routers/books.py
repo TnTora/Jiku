@@ -1,9 +1,9 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 
-from api.schemas.books import BookInfoResponse, BookRespone, BookLastPosUpdate
+from api.schemas.books import BookInfoResponse, BookRespone, BookLastPosUpdate, BookmarkCreate, BookmarkResponse
 
 from api.db import get_db
-from api.db.models.books import Book, Section, LastPosition, BookToken
+from api.db.models.books import Book, Section, LastPosition, BookToken, Bookmark
 from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme
 
 from sqlalchemy import select, delete, distinct, func
@@ -95,6 +95,28 @@ def update_last_pos(pos_update: BookLastPosUpdate, db: Annotated[Session, Depend
         last_pos.ch_pos = pos_update.ch_pos
 
     db.commit()
+
+
+@router.post(
+    "/add_bookmark",
+    response_model=BookmarkResponse,
+    status_code=status.HTTP_201_CREATED)
+def add_bookmark(bookmark: BookmarkCreate, db: Annotated[Session, Depends(get_db)]):
+    new_bookmark = Bookmark(
+        book_id=bookmark.book_id,
+        name=bookmark.name,
+        preview=bookmark.preview,
+        section=bookmark.section,
+        ch_pos=bookmark.ch_pos,
+        tok_pos=bookmark.tok_pos,
+    )
+
+    db.add(new_bookmark)
+    db.commit()
+    db.refresh(new_bookmark)
+
+    return new_bookmark
+
 
 @router.get("/all", response_model=list[BookInfoResponse])
 def get_books(db: Annotated[Session, Depends(get_db)]):

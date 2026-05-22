@@ -1,5 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
-from datetime import datetime
+from pydantic import BaseModel, Field
 
 
 class BookPosition(BaseModel):
@@ -14,9 +13,14 @@ class TocItem(BaseModel):
     anchor_id: str | None = None
 
 
-class Bookmark(BookPosition):
+class BookmarkCreate(BookPosition):
+    book_id: int
     name: str
-    preview: str
+    preview: str | None = None
+
+
+class BookmarkResponse(BookmarkCreate):
+    id: int
 
 
 class BookMetadata(BaseModel):
@@ -24,12 +28,6 @@ class BookMetadata(BaseModel):
     authors: list[str] = []
     # last_modified: datetime = Field(default_factory=datetime.now)
     raw: dict
-
-
-# class BookStats(BaseModel):
-#     total_char: int = Field(ge=0, default=0)
-#     total_tokens: int = Field(ge=0, default=0)
-#     tokens_count: dict[str, int] = {}
 
 
 class Section(BaseModel):
@@ -52,7 +50,7 @@ class Book(BaseModel):
     stylesheets: list[str]
     spine: list[str]
     toc: list[TocItem] = []
-    bookmarks: list[Bookmark] = []
+    bookmarks: list[BookmarkResponse] = []
 
     thumb: str | None = None
     original_file: str

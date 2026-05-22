@@ -316,16 +316,39 @@
         document.addEventListener("click", handleClick, true);
     };
 
-    function addBookmark() {
+    async function addBookmark() {
         console.log(bookmark_selection_name);
         if (!bookmark_selection_name) { return; }
 
-        book.bookmarks.push({
-            name: bookmark_selection_name,
-            preview: "Testing Preview",
-            section: curr_section,
-            tok_pos: bookmark_selection,
-        });
+        let new_bookmark;
+
+        try {
+            const res = await fetch("http://127.0.0.1:8000/books/add_bookmark", {
+                method: "POST",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    book_id: book.id,
+                    name: bookmark_selection_name,
+                    preview: "Testing Preview",
+                    section: curr_section,
+                    tok_pos: bookmark_selection,
+                })
+            });
+
+            new_bookmark = await res.json();
+        } catch (error) {
+            console.error("Failed to add Bookmark: ", error);
+            errors.push({
+                short: "Failed to add Bookmark",
+                details: error,
+            });
+            throw error;
+        }
+
+        book.bookmarks.push(new_bookmark);
     }
 
     function cancelBookmarking() {
