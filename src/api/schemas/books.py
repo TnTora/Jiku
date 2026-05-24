@@ -15,7 +15,7 @@ class TocItem(BaseModel):
 
 class BookmarkCreate(BookPosition):
     book_id: int
-    name: str
+    name: str = Field(min_length=1, max_length=100)
     preview: str | None = None
 
 
@@ -73,6 +73,26 @@ class BookInfoResponse(BaseModel):
     creators: list[str] = []
     thumb: str | None = None
     static_url: str
+
+
+class CollectionCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
+class CollectionInfoResponse(BaseModel):
+    id: int
+    name: str
+
+
+class CollectionRename(BaseModel):
+    id: int
+    name: str
+
+
+class CreatorInfoRespone(BaseModel):
+    id: int
+    name: str
+
 
 class BookLastPosUpdate(BookPosition):
     id: int
