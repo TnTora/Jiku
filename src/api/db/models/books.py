@@ -136,8 +136,13 @@ class Book(Base):
         cascade="all, delete"
     )
 
-    toc: Mapped[list[TocItem]] = relationship(order_by=TocItem.number)
-    bookmarks: Mapped[list[Bookmark]] = relationship(order_by=Bookmark.tok_pos)
+    toc: Mapped[list[TocItem]] = relationship(
+        order_by=TocItem.number,
+        cascade="all, delete",
+    )
+    bookmarks: Mapped[list[Bookmark]] = relationship(
+        order_by=Bookmark.tok_pos,
+        cascade="all, delete")
 
     creators_: Mapped[list[Creator]] = relationship(
         secondary="creators_books",
