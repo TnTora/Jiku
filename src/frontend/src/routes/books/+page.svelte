@@ -5,6 +5,10 @@
     import TopBar from "./TopBar.svelte";
     import SidePanel from "./SidePanel.svelte";
     let { data } = $props();
+
+    // svelte-ignore state_referenced_locally
+    let { collections } = $state(data);
+
     let  ascending_order: boolean = $state(false);
     let item_size_rem: number = $state(12.5);
     let show_side_panel: boolean = $state(false);
@@ -46,7 +50,7 @@
             transition:fly={{x:-320, duration:200, opacity:0.5}}
             class="h-full" style="grid-area: sidepanel;"
         >
-            <SidePanel onoutsideclick={() => { show_side_panel = false; }}/>
+            <SidePanel collections={collections} creators={data.creators}/>
         </div>
     {/if}
 
@@ -89,9 +93,8 @@
                     class="px-2 py-1 text-sm field-sizing-content text-center bg-neutral-900 border-neutral-900 hover:bg-neutral-950 border rounded-lg"
                 >
                     <option>Title</option>
-                    <option>Length</option>
-                    <option>Known Unique Words %</option>
-                    <option>Known Total Words %</option>
+                    <option>Last Added</option>
+                    <option>Last Opened</option>
                 </select>
 
                 <button
