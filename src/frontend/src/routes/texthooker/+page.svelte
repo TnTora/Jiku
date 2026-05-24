@@ -1,5 +1,5 @@
 <script lang="ts">
-import { getContext } from "svelte";
+import { getJikuErrorsContext } from "$lib/utils/context.js";
 import { setTextHookerOptionsContext } from "./context.js";
 import TexthookerLine from "$lib/components/TexthookerLine.svelte";
 import TopBar from "./TopBar.svelte";
@@ -25,7 +25,7 @@ let line_counter = $derived(lines.length+new_lines.length);
 
 let show_options = $state(false);
 
-const errors = getContext("errors");
+const errors = getJikuErrorsContext();
 
 let text_container: HTMLDivElement | undefined;
 

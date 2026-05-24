@@ -1,6 +1,10 @@
 <script lang="ts">
     import { clickOutside } from "$lib/utils/clickOutside";
-    let { item } = $props();
+    import { getConfirmationPopupContext } from "$lib/utils/context";
+
+    const confirmation_popup = getConfirmationPopupContext();
+
+    let { item, deleteBook } = $props();
     let show_item_options = $state(false);
 
 </script>
@@ -55,7 +59,22 @@
     <button class="p-1 text-neutral-200 hover:text-sky-600 hover:bg-neutral-950 active:text-sky-400">
         Add to Collection
     </button>
-    <button class="p-1 text-red-500 hover:text-red-500 hover:bg-neutral-950 active:text-red-400">
+    <button
+        class="p-1 text-red-500 hover:text-red-500 hover:bg-neutral-950 active:text-red-400"
+        onclick={(e) => {
+            e.stopPropagation();
+            confirmation_popup.modalOk = async () => {
+                try {
+                    await deleteBook(item.id);
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+            confirmation_popup.use_modal_input = false;
+            confirmation_popup.input_description = `Delete '${item.title}'?`
+            confirmation_popup.show_input_modal = true;
+        }}
+    >
         Delete
     </button>
     <button

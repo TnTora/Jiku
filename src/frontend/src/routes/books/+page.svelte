@@ -4,12 +4,20 @@
     import GridDisplay from "$lib/components/GridDisplay.svelte";
     import TopBar from "./TopBar.svelte";
     import SidePanel from "./SidePanel.svelte";
+    import ConfirmationPopup from "$lib/components/ConfirmationPopup.svelte";
+    import { getJikuErrorsContext } from "$lib/utils/context";
+    import { getConfirmationPopupContext } from "$lib/utils/context";
+	import { invalidateAll } from "$app/navigation";
+
+    const errors = getJikuErrorsContext();
+    const confirmation_popup = getConfirmationPopupContext();
+
     let { data } = $props();
 
     // svelte-ignore state_referenced_locally
     let { collections } = $state(data);
 
-    let  ascending_order: boolean = $state(false);
+    let ascending_order: boolean = $state(false);
     let item_size_rem: number = $state(12.5);
     let show_side_panel: boolean = $state(false);
     let selecting: boolean = $state(false);
@@ -22,8 +30,30 @@
         }
     });
 
-    function onItemClickCapture(item) {
-        return (e) => {
+    async function deleteSelectedBooks() {
+        for (const book of selected) {
+
+            try {
+                const res = await fetch(`http://127.0.0.1:8000/books/delete_book/${book.id}`, {
+                    method: "DELETE",
+                });
+            } catch (error) {
+                console.error(`Failed deleting book ${book.title}`, error);
+                errors.push({
+                    short: "Failed deleting collection",
+                    details: error,
+                });
+                throw error;
+            }
+
+        }
+
+        invalidateAll();
+    }
+
+
+    function onItemClickCapture(item: any) {
+        return (e: Event) => {
             if (!selecting) { return; }
 
             console.log("selected", selected);
@@ -156,7 +186,18 @@
                 title="Delete"
                 class="text-sm text-red-500 hover:text-red-700 active:text-red-400 hover:cursor-pointer"
                 onclick={() => {
-                    selecting = false;
+                    confirmation_popup.modalOk = async () => {
+                        try {
+                            await deleteSelectedBooks();
+                            selecting = false;
+                        } catch (error) {
+                            console.error(error.message);
+                        }
+                    }
+                    confirmation_popup.input_description = `Delete ${selected.size} books?`
+                    confirmation_popup.use_modal_input = false;
+                    confirmation_popup.show_input_modal = true;
+                    
                 }}
             >
                 Delete

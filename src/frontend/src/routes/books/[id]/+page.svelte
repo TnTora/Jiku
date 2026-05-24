@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { tick } from "svelte";
-    import { getContext } from "svelte";
+    import { getJikuErrorsContext } from "$lib/utils/context.js";
     import { setEbookReaderOptionsContext } from "./context";
     import { clickOutside } from "$lib/utils/clickOutside.js";
 	import TopBar from "./TopBar.svelte";
@@ -14,9 +14,10 @@
     let { data } = $props();
     let { book, status_map } = $derived(data);
 
-    const errors = getContext("errors");
+    const errors = getJikuErrorsContext();
 
 
+    // svelte-ignore state_referenced_locally
     let curr_section: string = $state(book.last_pos? book.last_pos.section : book.spine[0]);
 
     let prev_section: string | null = $derived(
@@ -75,6 +76,7 @@
     let page_first_token_span: HTMLSpanElement | null;
     let skip_intersection: boolean = false;
 
+    // svelte-ignore state_referenced_locally
     let stylesheets_elements = new Array<HTMLLinkElement>(book.stylesheets.length);
 
     $effect(() => {
@@ -95,8 +97,9 @@
 
     let section_page: number = 0;
 
-    console.log(curr_section);
+    // console.log(curr_section);
 
+    // svelte-ignore state_referenced_locally
     let curr_token_abs: number = $state(book.sections[curr_section].start_tok);
     let curr_token_rel: number = $derived(curr_token_abs - book.sections[curr_section].start_tok);
     let curr_token: number = $derived(options.limit_progress_to_section? curr_token_rel: curr_token_abs);
@@ -340,7 +343,7 @@
 
             new_bookmark = await res.json();
         } catch (error) {
-            console.error("Failed to add Bookmark: ", error);
+            console.error("Failed to add Bookmark", error);
             errors.push({
                 short: "Failed to add Bookmark",
                 details: error,
@@ -559,7 +562,7 @@
                     <input bind:value={jump_to_value} type="number" class="w-25 bg-neutral-800 rounded-md text-center hide-input-spinners">
                     <span class="text-xs text-neutral-400">of {book.total_tokens}</span>
                 </div>
-                <button 
+                <button
                     title="Jump"
                     class="px-3 py-1 bg-neutral-800 rounded-full text-sm font-semibold cursor-pointer hover:bg-neutral-700 active:bg-neutral-600"
                     onclick={() => {

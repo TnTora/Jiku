@@ -1,17 +1,99 @@
 <script lang="ts">
-	import { title } from "process";
+    import { getJikuErrorsContext } from "$lib/utils/context";
+    import { getConfirmationPopupContext } from "$lib/utils/context";
 
-    let collections = [
-        "Collection 1", "Collection 2", "Collection 3", "Collection 4", "Collection 5", "Collection 6", "Collection 7",
-        "Collection 1", "Collection 2", "Collection 3", "Collection 4", "Collection 5", "Collection 6", "Collection 7",
-        "Collection 1", "Collection 2", "Collection 3", "Collection 4", "Collection 5", "Collection 6", "Collection 7",
-        "Collection 1", "Collection 2", "Collection 3", "Collection 4", "Collection 5", "Collection 6", "Collection 7"
-    ];
-    let authors = ["Author 1", "Author 2", "Author 3"];
+    const errors = getJikuErrorsContext();
+    const confirmation_popup = getConfirmationPopupContext();
+
+
+    let collections_test = [];
+
+    for (let i=0; i < 20; i++) {
+        collections_test.push({
+            id: i,
+            name: `Collection ${i+1}`
+        });
+    }
+
+    let { collections, creators } = $props();
 
     let tab: "collections" | "authors" = $state("collections");
 
     let editing: boolean = $state(false);
+
+
+    async function addCollection() {
+        let new_collection;
+        let name = confirmation_popup.text_input_value;
+
+        try {
+            let res = await fetch("http://127.0.0.1:8000/books/add_collection/", {
+                method: "POST",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    name: name
+                })
+            });
+            new_collection = await res.json();
+        } catch (error) {
+            console.error("Failed to add new collection", error);
+            errors.push({
+                short: "Failed to add new collection",
+                details: error,
+            });
+            throw error;
+        }
+
+        if (new_collection) {
+            collections.push(new_collection);
+        }
+        
+    }
+
+
+    async function renameCollection(collection_id:number) {
+        let name = confirmation_popup.text_input_value;
+
+        try {
+            let res = await fetch("http://127.0.0.1:8000/books/rename_collection/", {
+                method: "PUT",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    id: collection_id,
+                    name: name
+                })
+            });
+        } catch (error) {
+            console.error("Failed to rename collection", error);
+            errors.push({
+                short: "Failed to rename collection",
+                details: error,
+            });
+            throw error;
+        }
+    }
+
+
+    async function deleteCollection(collection_id: number) {
+        try {
+            const res = await fetch(`http://127.0.0.1:8000/books/delete_collection/${collection_id}`, {
+                method: "DELETE",
+            });
+        } catch (error) {
+            console.error("Failed deleting collection", error);
+            errors.push({
+                short: "Failed deleting collection",
+                details: error,
+            });
+            throw error;
+        }
+    }
 
 </script>
 
@@ -31,10 +113,15 @@
 
     {#if tab == "collections"}
         <ul>
+            <li>
+                <button>
+                    Library
+                </button>
+            </li>
         {#each collections as collection}
             <li class="flex items-center justify-between {editing? "editing": ""}">
                 <button>
-                    {collection}
+                    {collection.name}
                 </button>
             {#if editing}
                 <div class="flex gap-1">
@@ -42,6 +129,23 @@
                         class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
                         onclick={(e) => {
                             e.stopPropagation();
+
+                            confirmation_popup.modalOk = async () => {
+                                if (!confirmation_popup.text_input_value) { return; }
+
+                                try {
+                                    await renameCollection(collection.id)
+                                    console.log("text input ", confirmation_popup.text_input_value)
+                                    collection.name = confirmation_popup.text_input_value;
+                                } catch (error) {
+                                    console.error(error.message);
+                                }
+
+                            }
+                            confirmation_popup.use_modal_input = true;
+                            confirmation_popup.input_description = `Rename Collection '${collection.name}' to:`;
+                            confirmation_popup.text_input_default = collection.name;
+                            confirmation_popup.show_input_modal = true;
                         }}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
@@ -52,6 +156,17 @@
                         class="text-red-500 hover:text-red-800 active:text-red-400 hover:cursor-pointer"
                         onclick={(e) => {
                             e.stopPropagation();
+                            confirmation_popup.modalOk = async () => {
+                                try {
+                                    await deleteCollection(collection.id);
+                                    collections = collections.filter( e => e.id != collection.id);
+                                } catch (error) {
+                                    console.error(error);
+                                }
+                            }
+                            confirmation_popup.use_modal_input = false;
+                            confirmation_popup.input_description = `Delete Collection '${collection.name}'?`
+                            confirmation_popup.show_input_modal = true;
                         }}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
@@ -66,10 +181,10 @@
 
     {:else if tab == "authors"}
         <ul>
-        {#each authors as author}
+        {#each creators as creator}
             <li>
                 <button>
-                    {author}
+                    {creator.name}
                 </button>
             </li>
         {/each}
@@ -83,18 +198,11 @@
     <div class="px-5 py-1 flex items-center gap-4">
     {#if editing}
         <button
-            title="Cancel Edit"
-            class="text-sm text-red-700 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
-            onclick={() => { editing = false; }}
-        >
-            Cancel
-        </button>
-        <button
-            title="Confirm Edit"
+            title="Edit Done"
             class="text-sm text-neutral-400 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
             onclick={() => { editing = false; }}
         >
-            Confirm
+            Done
         </button>
     {:else}
         <button
@@ -110,12 +218,36 @@
         <button
             title="New Collection"
             class="aspect-square h-7 text-sm bg-neutral-900 border-neutral-700 hover:bg-neutral-950 active:bg-[#353535]"
+            onclick={() => {
+                console.log("input modal");
+                confirmation_popup.show_input_modal = true;
+                confirmation_popup.input_description = "Choose a name for the new collection";
+                confirmation_popup.modalOk = addCollection;
+            }}
         >
             +
         </button>
     </div>
 </div>
 {/if}
+
+<!-- {#if show_input_modal}
+    <ConfirmationPopup
+        use_input={use_modal_input}
+        bind:text_input_value={text_input_value}
+        // text_input_default={`Collection ${collections.length + 1}`}
+        text={input_description}
+        onCacncel={resetInputModal}
+        onOk={() => {
+            if (use_modal_input && !text_input_value) { return; }
+            modalOk()
+            .then(
+                resetInputModal,
+                resetInputModal
+            );
+        }}
+    />
+{/if} -->
 
 <style>
 
