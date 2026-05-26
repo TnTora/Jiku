@@ -11,9 +11,6 @@ from ebooklib import epub
 from dataclasses import dataclass, field
 from tinycss2.ast import IdentToken, QualifiedRule, AtRule
 
-
-# from api.schemas.books import BookStats
-
 from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.db.models.core import Morpheme
 
@@ -28,6 +25,7 @@ from api.db.models.books import (
     Creator,
     BookToken,
     BookTokenCount,
+    LastPosition,
 )
 
 from sqlalchemy import select, insert
@@ -95,6 +93,9 @@ def process_ebub(filepath: Path, db: Session) -> Book:
 
     book_id = processed_book.id
 
+    last_pos = LastPosition(book_id=book_id, section=spine[0])
+    db.add(last_pos)
+
     base_path = config_path / Path(f"books/{book_id}/")
     base_path.mkdir(parents=True, exist_ok=True)
     (base_path / "stylesheets").mkdir(parents=True, exist_ok=True)
@@ -119,8 +120,6 @@ def process_ebub(filepath: Path, db: Session) -> Book:
             creator_id=creator.id,
         ))
 
-
-    # sections: dict[str, Section] = {}
     stats = BookStats()
 
     stylesheets:set[str] = set()
@@ -136,16 +135,10 @@ def process_ebub(filepath: Path, db: Session) -> Book:
     for img in book.get_items_of_type(ebooklib.ITEM_IMAGE):
         (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
 
-
     for stylesheet in book.get_items_of_type(ebooklib.ITEM_STYLE):
         filename = Path(stylesheet.get_name()).name
         process_stylesheet(base_path / "stylesheets" / filename, stylesheet.get_content())
 
-    # processed_book.stylesheets = list(stylesheets)
-    # section_number = 0
-
-    #TODO: Ensure documents are processed in spine order
-    # for doc in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
     for idref in spine:
         doc = book.get_item_with_id(idref)
         filename = Path(doc.get_name()).name
@@ -159,7 +152,6 @@ def process_ebub(filepath: Path, db: Session) -> Book:
         )
 
         section.key = doc.id
-        # sections[section.key] = section
 
         documents_id_dict[Path(doc.get_name()).stem] = doc.id
 
