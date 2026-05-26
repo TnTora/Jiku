@@ -1,7 +1,7 @@
 <script lang="ts">
     import { fly } from "svelte/transition";
     import { SvelteSet } from "svelte/reactivity";
-    import { page } from "$app/stores";
+    import { page } from "$app/state";
     import BookGridDisplay from "./BookGridDisplay.svelte";
     import TopBar from "./TopBar.svelte";
     import SidePanel from "./SidePanel.svelte";
@@ -25,7 +25,7 @@
     // svelte-ignore state_referenced_locally
     let { collections } = $state(data);
 
-    let ascending_order: boolean = $state(Boolean($page.url.searchParams.get("asc")));
+    let ascending_order: boolean = $state(Boolean(page.url.searchParams.get("asc")));
     let item_size_rem: number = $state(12.5);
     let show_side_panel: boolean = $state(false);
     let selecting: boolean = $state(false);
@@ -73,7 +73,7 @@
 
 
     function modifiedSearchParams( key: string, value: string) {
-        const search_params = new URLSearchParams($page.url.searchParams);
+        const search_params = new URLSearchParams(page.url.searchParams);
         if (value) {
             search_params.set(key, value);
         } else {
@@ -88,7 +88,7 @@
     }
 
     onMount(() => {
-        title_search = $page.url.searchParams.get("title")?? "";
+        title_search = page.url.searchParams.get("title")?? "";
     })
 
 </script>
@@ -115,7 +115,7 @@
             <select
                 id="status"
                 class="px-2 py-1 text-md text-center shrink-2 min-w-13 bg-neutral-900 border-neutral-900 hover:bg-neutral-950 border rounded-lg"
-                onchange={() => {goto(modifiedSearchParams("progress", this.value))}}
+                onchange={function(this: HTMLSelectElement) {goto(modifiedSearchParams("progress", this.value))}}
             >
                 <option value="">All</option>
                 <option value="reading">Reading</option>
@@ -152,9 +152,9 @@
                 <select
                     id="order-by"
                     class="px-2 py-1 text-sm field-sizing-content text-center bg-neutral-900 border-neutral-900 hover:bg-neutral-950 border rounded-lg"
-                    onchange={() => {
-                        const search_params = new URLSearchParams($page.url.searchParams);
-                        if (this.value > 0) {
+                    onchange={function(this: HTMLSelectElement) {
+                        const search_params = new URLSearchParams(page.url.searchParams);
+                        if (Number(this.value) > 0) {
                             search_params.set("asc", "no");
                             ascending_order = false;
                         }
@@ -235,7 +235,7 @@
                 onclick={() => {
                     if (selected.size == 0) { return; }
 
-                    confirmation_popup.modalOk = async () => {
+                    confirmation_popup.onOk = async () => {
                         try {
                             await deleteSelectedBooks();
                             selecting = false;
@@ -243,9 +243,8 @@
                             console.error(error.message);
                         }
                     }
-                    confirmation_popup.input_description = `Delete ${selected.size} books?`
-                    confirmation_popup.use_modal_input = false;
-                    confirmation_popup.show_input_modal = true;
+                    confirmation_popup.text = `Delete ${selected.size} books?`
+                    confirmation_popup.show = true;
                     
                 }}
             >
