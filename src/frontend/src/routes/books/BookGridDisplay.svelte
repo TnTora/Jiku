@@ -6,7 +6,14 @@
 
     const errors = getJikuErrorsContext();
 
-    let { items, selecting = $bindable(false), selected = $bindable(new SvelteSet()), item_min_w = null } = $props();
+    interface Props<T> {
+        items: Array<T>,
+        selecting: boolean,
+        selected: SvelteSet<T>,
+        item_min_w: string | null
+    }
+
+    let { items, selecting = $bindable(false), selected = $bindable(new SvelteSet()), item_min_w = null }: Props<any> = $props();
 
     async function deleteBook(book_id: number) {
         try {
@@ -28,7 +35,7 @@
 
 
 <GridDisplay {items} bind:selecting={selecting} bind:selected={selected}>
-    {#snippet children(item)}
+    {#snippet children(item: any)}
         <BookGridItem
             {item}
             deleteBook={async () => {

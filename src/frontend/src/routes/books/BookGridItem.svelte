@@ -59,9 +59,7 @@
     onoutsideclick={() => { show_item_options = false; }}
     class="absolute w-full h-full flex flex-col justify-center gap-0 bg-neutral-900/99"
 >
-    <button class="p-1 text-neutral-200 hover:text-sky-600 hover:bg-neutral-950 active:text-sky-400">
-        Metadata
-    </button>
+
     <button
         class="p-1 text-neutral-200 hover:text-sky-600 hover:bg-neutral-950 active:text-sky-400"
         onclick={() => {
@@ -73,6 +71,7 @@
     >
         Add to Collection
     </button>
+
     <button
         class="p-1 text-red-500 hover:text-red-500 hover:bg-neutral-950 active:text-red-400"
         onclick={(e) => {
@@ -90,6 +89,7 @@
     >
         Delete
     </button>
+
     <button
         title="Close"
         class="absolute bottom-2 right-2 text-neutral-200 hover:text-sky-600 active:text-sky-400 cursor-pointer"
