@@ -6,14 +6,28 @@ from api.schemas.books import (
     BookmarkCreate,
     BookmarkResponse,
     CollectionInfoResponse,
-    CollectionCreate, BookInfoResponse, CreatorInfoRespone, CollectionRename,
+    CollectionCreate,
+    BookInfoResponse,
+    CreatorInfoRespone,
+    CollectionRename,
+    CollectionBookCreate,
 )
 
 from api.db import get_db
-from api.db.models.books import Book, Section, LastPosition, BookToken, Bookmark, Creator, Collection
 from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme
+from api.db.models.books import (
+    Book,
+    Section,
+    LastPosition,
+    BookToken,
+    Bookmark,
+    Creator,
+    Collection,
+    CreatorBook,
+    CollectionBook
+)
 
-from sqlalchemy import select, delete, distinct, func
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from api.core.config import config_path
@@ -123,10 +137,65 @@ def delete_bookmark(bookmark_id: int, db: Annotated[Session, Depends(get_db)]):
 
 
 @router.get("/books_info", response_model=list[BookInfoResponse])
-def get_books(db: Annotated[Session, Depends(get_db)]):
+def get_books(  # noqa: PLR0913
+    db: Annotated[Session, Depends(get_db)],
+    title: str | None = None,
+    creator_id: int | None = None,
+    collection_id: int | None = None,
+    progress: str | None = None,
+    ordr: int = 0,
+    asc: bool = True,  # noqa: FBT001, FBT002
+    limit:int | None = None,
+    offset: int = 0):
+
+    stmt = select(Book)
+
+    if creator_id and collection_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="creator_id and collection_id cannot be specified at the same time"
+        )
+
+    if creator_id:
+        stmt = (stmt
+            .join(CreatorBook)
+            .join(Creator)
+            .where(Creator.id == creator_id)
+        )
+
+    if collection_id:
+        stmt = (stmt
+            .join(CollectionBook)
+            .join(Collection)
+            .where(Collection.id == collection_id)
+        )
+
+    if title:
+        stmt = stmt.where(Book.title.ilike(f"%{title}%"))
+
+    if progress:
+        if progress in ("new", "reading", "completed"):
+            stmt = stmt.where(Book.progress_status == progress)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid progress value"
+            )
+
+    if limit:
+        stmt = stmt.limit(limit).offset(offset)
+
+    if ordr == 0:
+        order = Book.title
+    elif ordr == 1:
+        order = Book.date_added
+    else:
+        order = Book.last_opened
+
+    stmt = stmt.order_by(order.asc()) if asc else stmt.order_by(order.desc())
 
     books = db.execute(
-        select(Book)
+        stmt
     ).scalars().all()
 
     return books
@@ -179,6 +248,15 @@ def rename_collection(data: CollectionRename, db: Annotated[Session, Depends(get
 
     collection.name = data.name
 
+    db.commit()
+
+
+@router.post(
+    "/add_book_to_collection",
+    status_code=status.HTTP_201_CREATED)
+def add_book_to_collection(data: CollectionBookCreate, db: Annotated[Session, Depends(get_db)]):
+    new_pair = CollectionBook(book_id=data.book_id, collection_id=data.collection_id)
+    db.add(new_pair)
     db.commit()
 
 

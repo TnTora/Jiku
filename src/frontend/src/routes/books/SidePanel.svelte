@@ -231,24 +231,6 @@
 </div>
 {/if}
 
-<!-- {#if show_input_modal}
-    <ConfirmationPopup
-        use_input={use_modal_input}
-        bind:text_input_value={text_input_value}
-        // text_input_default={`Collection ${collections.length + 1}`}
-        text={input_description}
-        onCacncel={resetInputModal}
-        onOk={() => {
-            if (use_modal_input && !text_input_value) { return; }
-            modalOk()
-            .then(
-                resetInputModal,
-                resetInputModal
-            );
-        }}
-    />
-{/if} -->
-
 <style>
 
 button {
