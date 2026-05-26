@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { getJikuErrorsContext } from "$lib/utils/context";
-    import { getConfirmationPopupContext } from "$lib/utils/context";
+    import { getJikuErrorsContext, getTextInputPopupContext, getConfirmationPopupContext } from "$lib/utils/context";
 
     const errors = getJikuErrorsContext();
     const confirmation_popup = getConfirmationPopupContext();
+    const text_input_popup = getTextInputPopupContext();
 
 
     let collections_test = [];
@@ -24,7 +24,7 @@
 
     async function addCollection() {
         let new_collection;
-        let name = confirmation_popup.text_input_value;
+        let name = text_input_popup.text_input_value;
 
         try {
             let res = await fetch("http://127.0.0.1:8000/books/add_collection/", {
@@ -55,7 +55,7 @@
 
 
     async function renameCollection(collection_id:number) {
-        let name = confirmation_popup.text_input_value;
+        let name = text_input_popup.text_input_value;
 
         try {
             let res = await fetch("http://127.0.0.1:8000/books/rename_collection/", {
@@ -130,22 +130,21 @@
                         onclick={(e) => {
                             e.stopPropagation();
 
-                            confirmation_popup.modalOk = async () => {
-                                if (!confirmation_popup.text_input_value) { return; }
+                            confirmation_popup.onOk = async () => {
+                                if (!text_input_popup.text_input_value) { return; }
 
                                 try {
                                     await renameCollection(collection.id)
-                                    console.log("text input ", confirmation_popup.text_input_value)
-                                    collection.name = confirmation_popup.text_input_value;
+                                    console.log("text input ", text_input_popup.text_input_value)
+                                    collection.name = text_input_popup.text_input_value;
                                 } catch (error) {
                                     console.error(error.message);
                                 }
 
                             }
-                            confirmation_popup.use_modal_input = true;
-                            confirmation_popup.input_description = `Rename Collection '${collection.name}' to:`;
-                            confirmation_popup.text_input_default = collection.name;
-                            confirmation_popup.show_input_modal = true;
+                            text_input_popup.text = `Rename Collection '${collection.name}' to:`;
+                            text_input_popup.text_input_default = collection.name;
+                            text_input_popup.show = true;
                         }}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
@@ -156,7 +155,7 @@
                         class="text-red-500 hover:text-red-800 active:text-red-400 hover:cursor-pointer"
                         onclick={(e) => {
                             e.stopPropagation();
-                            confirmation_popup.modalOk = async () => {
+                            confirmation_popup.onOk = async () => {
                                 try {
                                     await deleteCollection(collection.id);
                                     collections = collections.filter( e => e.id != collection.id);
@@ -164,9 +163,8 @@
                                     console.error(error);
                                 }
                             }
-                            confirmation_popup.use_modal_input = false;
-                            confirmation_popup.input_description = `Delete Collection '${collection.name}'?`
-                            confirmation_popup.show_input_modal = true;
+                            confirmation_popup.text = `Delete Collection '${collection.name}'?`
+                            confirmation_popup.show = true;
                         }}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
@@ -220,9 +218,9 @@
             class="aspect-square h-7 text-sm bg-neutral-900 border-neutral-700 hover:bg-neutral-950 active:bg-[#353535]"
             onclick={() => {
                 console.log("input modal");
-                confirmation_popup.show_input_modal = true;
-                confirmation_popup.input_description = "Choose a name for the new collection";
-                confirmation_popup.modalOk = addCollection;
+                text_input_popup.show = true;
+                text_input_popup.text = "Choose a name for the new collection";
+                text_input_popup.onOk = addCollection;
             }}
         >
             +

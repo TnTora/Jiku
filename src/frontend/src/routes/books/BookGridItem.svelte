@@ -77,16 +77,15 @@
         class="p-1 text-red-500 hover:text-red-500 hover:bg-neutral-950 active:text-red-400"
         onclick={(e) => {
             e.stopPropagation();
-            confirmation_popup.modalOk = async () => {
+            confirmation_popup.onOk = async () => {
                 try {
                     await deleteBook(item.id);
                 } catch (error) {
                     console.error(error);
                 }
             }
-            confirmation_popup.use_modal_input = false;
-            confirmation_popup.input_description = `Delete '${item.title}'?`
-            confirmation_popup.show_input_modal = true;
+            confirmation_popup.text = `Delete '${item.title}'?`
+            confirmation_popup.show = true;
         }}
     >
         Delete
