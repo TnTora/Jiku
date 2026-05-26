@@ -8,8 +8,8 @@
     import OptionPanel from "./OptionPanel.svelte";
     import SidePanel from "./SidePanel.svelte";
     import BookRender from "./BookRender.svelte";
-    import ConfirmationPopup from "$lib/components/ConfirmationPopup.svelte";
 	import { goto } from "$app/navigation";
+	import TextInputPopup from "$lib/components/TextInputPopup.svelte";
 
     let { data } = $props();
     let { book, status_map } = $derived(data);
@@ -577,12 +577,11 @@
 
 
         {#if show_bookmarking_confirmation}
-            <ConfirmationPopup
-                use_input={true}
+            <TextInputPopup
                 bind:text_input_value={bookmark_selection_name}
                 text_input_default={`Bookmark ${book.bookmarks.length + 1}`}
                 text="Choose a name"
-                onCacncel={cancelBookmarking}
+                onCancel={cancelBookmarking}
                 onOk={() => {
                     addBookmark();
                     cancelBookmarking();
@@ -650,7 +649,8 @@
 
         <div
             bind:this={book_container}
-            class="jiku-book-container {bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb"} {options.paginated? "paginated overflow-hidden": "overflow-scroll! p-12"} w-[calc(100%-2*var(--book-x-margin))]! bg-neutral-800!" 
+            id="jiku-book-container"
+            class="{bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb"} {options.paginated? "paginated overflow-hidden": "overflow-scroll! p-12"} w-[calc(100%-2*var(--book-x-margin))]! bg-neutral-800!" 
             style="--forced-line-height: {options.line_height}; font-size: {options.font_size}px; {options.paginated? "": "--book-x-margin: 0rem; --book-margin-top: 0rem; --book-margin-bottom: 0rem;"}"
         >
             {#if content}
@@ -700,13 +700,13 @@
         border: 1rem;
     }
 
-    :global .jiku-book-container p {
+    :global #jiku-book-container p {
         line-height: var(--forced-line-height) !important;
     }
 
-    :global .jiku-book-container img,
-    :global .jiku-book-container image,
-    :global .jiku-book-container svg {
+    :global #jiku-book-container img,
+    :global #jiku-book-container image,
+    :global #jiku-book-container svg {
         max-height: var(--book-container-height) !important;
     }
 
@@ -716,7 +716,7 @@
         color: var(--color-neutral-200) !important;
     }
 
-    .jiku-book-container {
+    #jiku-book-container {
         --book-x-margin: 3rem;
         --book-margin-top: 1rem;
         --book-margin-bottom: 3rem;
