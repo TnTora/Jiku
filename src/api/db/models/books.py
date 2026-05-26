@@ -5,7 +5,7 @@ from datetime import datetime, UTC
 
 from api.db import Base
 
-from sqlalchemy import Integer, String, Text, ForeignKey, JSON
+from sqlalchemy import Integer, String, Text, ForeignKey, JSON, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship, attribute_keyed_dict
 
 
