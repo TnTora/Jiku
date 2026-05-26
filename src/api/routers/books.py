@@ -255,6 +255,13 @@ def rename_collection(data: CollectionRename, db: Annotated[Session, Depends(get
     "/add_book_to_collection",
     status_code=status.HTTP_201_CREATED)
 def add_book_to_collection(data: CollectionBookCreate, db: Annotated[Session, Depends(get_db)]):
+    exists = db.execute(
+        select(CollectionBook).where((CollectionBook.book_id == data.book_id) & (CollectionBook.collection_id == data.collection_id))
+    ).scalars().one_or_none()
+
+    if exists:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Book alreay found in collection")
+
     new_pair = CollectionBook(book_id=data.book_id, collection_id=data.collection_id)
     db.add(new_pair)
     db.commit()
