@@ -176,7 +176,7 @@
     </div>
 
     <div class="overflow-y-scroll" style="grid-area: main;">
-        <GridDisplay {onItemClickCapture} {selected} items={data.books} item_min_w={`${item_size_rem}rem`}/>
+        <BookGridDisplay bind:selected={selected} bind:selecting={selecting} items={data.books} item_min_w={`${item_size_rem}rem`}/>
     </div>
 
     <div class="h-8 px-2 py-2 flex items-center justify-between" style="grid-area: footer">

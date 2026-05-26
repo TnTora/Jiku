@@ -1,26 +1,27 @@
 <script lang="ts">
-    import BookGridItem from "./BookGridItem.svelte";
+    import { SvelteSet } from "svelte/reactivity";
     import { getJikuErrorsContext } from "$lib/utils/context";
 
     const errors = getJikuErrorsContext();
 
-    let { items, onItemClickCapture, selected = null, item_min_w = null } = $props();
+    let { items, selecting = $bindable(false), selected = $bindable(new SvelteSet()), item_min_w = null, children } = $props();
 
-    async function deleteBook(book_id: number) {
-        try {
-            const res = await fetch(`http://127.0.0.1:8000/books/delete_book/${book_id}`, {
-                method: "DELETE",
-            });
-            items = items.filter( e => e.id != book_id);
-        } catch (error) {
-            console.error(`Error deleting book ${book_id}`, error);
-            errors.push({
-                short: `Error deleting book ${book_id}`,
-                details: error,
-            });
-            throw error;
+    function onItemClickCapture(item: any) {
+        return (e: Event) => {
+            if (!selecting) { return; }
+
+            console.log("selected", selected);
+
+            e.stopPropagation();
+            e.preventDefault();
+
+            if (selected.has(item)){
+                selected.delete(item);
+            } else {
+                selected.add(item);
+            }
         }
-    }
+    };
 
 </script>
 
@@ -31,12 +32,7 @@
             class="{(selected?.has(item))? "selected":""} relative h-[calc(var(--item-min-w)*1.34)] w-full text-center flex items-center justify-center"
             onclickcapture={onItemClickCapture(item)}
         >
-            <BookGridItem
-                {item}
-                deleteBook={async () => {
-                    await deleteBook(item.id);
-                }}
-            />
+            {@render children(item)}
         </div>
     {/each}
 </div>

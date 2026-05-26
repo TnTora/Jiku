@@ -1,8 +1,14 @@
 <script lang="ts">
     import { clickOutside } from "$lib/utils/clickOutside";
     import { getConfirmationPopupContext } from "$lib/utils/context";
+    import { getSelectColelctionPopupContext } from "./context";
+    import { getJikuErrorsContext } from "$lib/utils/context";
+
+    import { addBookToCollection } from "./requests";
 
     const confirmation_popup = getConfirmationPopupContext();
+    const select_collection_popup = getSelectColelctionPopupContext();
+    const errors = getJikuErrorsContext();
 
     let { item, deleteBook } = $props();
     let show_item_options = $state(false);
@@ -56,7 +62,15 @@
     <button class="p-1 text-neutral-200 hover:text-sky-600 hover:bg-neutral-950 active:text-sky-400">
         Metadata
     </button>
-    <button class="p-1 text-neutral-200 hover:text-sky-600 hover:bg-neutral-950 active:text-sky-400">
+    <button
+        class="p-1 text-neutral-200 hover:text-sky-600 hover:bg-neutral-950 active:text-sky-400"
+        onclick={() => {
+            select_collection_popup.onOk = (collection_id:number) => {
+                addBookToCollection(item.id, errors)(collection_id);
+            }
+            select_collection_popup.show = true;
+        }}
+    >
         Add to Collection
     </button>
     <button
