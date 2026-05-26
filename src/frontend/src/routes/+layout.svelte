@@ -2,7 +2,7 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { setJikuErrorsContext } from '$lib/utils/context';
-	import { setConfirmationPopupContext } from '$lib/utils/context';
+	import { setConfirmationPopupContext, setTextInputPopupContext } from '$lib/utils/context';
 	import ErrorBox from '$lib/components/ErrorBox.svelte';
 	import ConfirmationPopup from '$lib/components/ConfirmationPopup.svelte';
 	import TextInputPopup from '$lib/components/TextInputPopup.svelte';
@@ -22,6 +22,8 @@
 		onCancel: () => { return; },
 	});
 
+	setConfirmationPopupContext(confirmation_popup);
+
 	let text_input_popup: TextInputPopupContext = $state({
 		show: false,
 		text: "",
@@ -31,7 +33,7 @@
 		onCancel: () => { return; },
 	});
 
-	setConfirmationPopupContext(confirmation_popup);
+	setTextInputPopupContext(text_input_popup);
 
 	function resetPopContexts() {
         text_input_popup.show= false;
