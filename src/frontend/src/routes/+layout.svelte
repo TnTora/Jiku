@@ -29,26 +29,31 @@
 		text: "",
 		text_input_value: null,
 		text_input_default: "",
-		onOk: () => { return; },
-		onCancel: () => { return; },
+		onOk: () => {},
+		onCancel: () => {},
 	});
 
 	setTextInputPopupContext(text_input_popup);
 
-	function resetPopContexts() {
+	function resetPopupContexts() {
         text_input_popup.show= false;
         text_input_popup.text = "";
         text_input_popup.text_input_value = null;
+		text_input_popup.text_input_default = "";
+		text_input_popup.onOk = () => {};
+		text_input_popup.onCancel = () => {};
 
 		confirmation_popup.show= false;
         confirmation_popup.text = "";
+		confirmation_popup.onOk = () => {};
+		confirmation_popup.onCancel = () => {};
     }
 
 	function modalOkWrapper(modalFunc: () => any) {
 		return () => {
 			let res = modalFunc();
 			Promise.resolve(res).then(
-				resetPopContexts
+				resetPopupContexts
 			);
 		}
 	}
@@ -64,7 +69,7 @@
 		text={confirmation_popup.text}
 		onCancel={() => {
 			confirmation_popup.onCancel();
-			resetPopContexts();
+			resetPopupContexts();
 		}}
 		onOk={modalOkWrapper(confirmation_popup.onOk)}
 	/>
@@ -77,7 +82,7 @@
 		text={text_input_popup.text}
 		onCancel={() => {
 			text_input_popup.onCancel();
-			resetPopContexts();
+			resetPopupContexts();
 		}}
 		onOk={modalOkWrapper(text_input_popup.onOk)}
 	/>
