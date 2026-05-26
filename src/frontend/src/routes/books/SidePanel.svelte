@@ -1,5 +1,7 @@
 <script lang="ts">
     import { getJikuErrorsContext, getTextInputPopupContext, getConfirmationPopupContext } from "$lib/utils/context";
+    import { page } from "$app/state";
+	import { goto } from "$app/navigation";
 
     const errors = getJikuErrorsContext();
     const confirmation_popup = getConfirmationPopupContext();
@@ -114,15 +116,15 @@
     {#if tab == "collections"}
         <ul>
             <li>
-                <button>
+                <a href={page.url.pathname} class="w-auto block">
                     Library
-                </button>
+                </a>
             </li>
         {#each collections as collection}
             <li class="flex items-center justify-between {editing? "editing": ""}">
-                <button>
+                <a href="?collection_id={collection.id}" class="grow">
                     {collection.name}
-                </button>
+                </a>
             {#if editing}
                 <div class="flex gap-1">
                     <button title="Rename"
@@ -135,7 +137,6 @@
 
                                 try {
                                     await renameCollection(collection.id)
-                                    console.log("text input ", text_input_popup.text_input_value)
                                     collection.name = text_input_popup.text_input_value;
                                 } catch (error) {
                                     console.error(error.message);
@@ -159,6 +160,9 @@
                                 try {
                                     await deleteCollection(collection.id);
                                     collections = collections.filter( e => e.id != collection.id);
+                                    if (page.url.searchParams.get("collection_id") == collection.id) {
+                                        goto(page.url.pathname);
+                                    }
                                 } catch (error) {
                                     console.error(error);
                                 }
@@ -181,9 +185,9 @@
         <ul>
         {#each creators as creator}
             <li>
-                <button>
+                <a href={`?creator_id=${creator.id}`} class="w-auto block">
                     {creator.name}
-                </button>
+                </a>
             </li>
         {/each}
         </ul>
