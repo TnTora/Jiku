@@ -1,4 +1,7 @@
 from __future__ import annotations
+from sqlalchemy.ext.hybrid import hybrid_property
+
+from datetime import datetime, UTC
 
 from api.db import Base
 
@@ -130,6 +133,20 @@ class Book(Base):
     spine: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     raw_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     stylesheets: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+
+    progress_status: Mapped[str] = mapped_column(String, nullable=False, default="new")
+
+    date_added: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC)
+    )
+
+    last_opened: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.min
+    )
 
     sections: Mapped[dict[str, Section]] = relationship(
         collection_class=attribute_keyed_dict("key"),

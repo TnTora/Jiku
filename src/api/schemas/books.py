@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 
 class BookPosition(BaseModel):
@@ -59,6 +60,9 @@ class Book(BaseModel):
     total_char: int = Field(ge=0, default=0)
     total_tokens: int = Field(ge=0, default=0)
 
+    date_added: datetime
+    last_opened: datetime = datetime.min
+
     last_pos: BookPosition | None = None
 
 
@@ -96,3 +100,8 @@ class CreatorInfoRespone(BaseModel):
 
 class BookLastPosUpdate(BookPosition):
     id: int
+
+
+class CollectionBookCreate(BaseModel):
+    book_id: int
+    collection_id: int
