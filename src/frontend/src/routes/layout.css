@@ -2,8 +2,8 @@
 @plugin '@tailwindcss/typography';
 
 :root {
-    --known-color: blueviolet;
-    --new-color: #4b9ed9;
+    --known-color: rgb(170, 133, 193); 
+    --new-color: rgb(165, 214, 249);
 }
 
 .vert-rl .jiku-book-html,
@@ -69,7 +69,7 @@ transform: translateY(-50%);
 
 .vert-rl .status-underline {
     --w: 0.20rem;   /* the width of the underline */
-    --c: red; /* the default color */
+    --c: rgb(222, 166, 101); /* the default color */
     
     /* line-height: calc(.5rem + var(--w)); */
     padding-left: calc(var(--w) + .2rem);
@@ -83,7 +83,7 @@ transform: translateY(-50%);
 
 :not(.vert-rl) .status-underline:not(.vert-rl .status-underline) {
     --h: 0.20rem;     /* the height of the underline */
-    --c: red; /* the default color */
+    --c: rgb(222, 166, 101); /* the default color */
     
     /* line-height: calc(1.5rem + var(--h)); */
     padding-bottom: calc(var(--h) + 0.1rem);
