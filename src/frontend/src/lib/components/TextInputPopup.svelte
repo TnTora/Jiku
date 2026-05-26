@@ -20,5 +20,15 @@
         type="text"
         defaultvalue={text_input_default}
         class="text-center bg-neutral-800 rounded-md"
+        onkeydown={(event) => {
+            switch (event.code) { 
+                case "Enter":
+                    onOk();
+                    break;
+                case "Escape":
+                    onCancel();
+                    break;
+            }
+        }}
     >
 </ConfirmationPopup>
