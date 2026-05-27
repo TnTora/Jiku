@@ -24,6 +24,11 @@ class BookmarkResponse(BookmarkCreate):
     id: int
 
 
+class BookmarkRename(BaseModel):
+    id: int
+    name: str
+
+
 class BookMetadata(BaseModel):
     title: str
     authors: list[str] = []

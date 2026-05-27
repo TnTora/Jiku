@@ -11,6 +11,7 @@ from api.schemas.books import (
     CreatorInfoRespone,
     CollectionRename,
     CollectionBookCreate,
+    BookmarkRename,
 )
 
 from api.db import get_db
@@ -123,6 +124,22 @@ def add_bookmark(bookmark: BookmarkCreate, db: Annotated[Session, Depends(get_db
     db.refresh(new_bookmark)
 
     return new_bookmark
+
+
+@router.put(
+    "/rename_bookmark",
+    status_code=status.HTTP_202_ACCEPTED)
+def rename_bookmark(data: BookmarkRename, db: Annotated[Session, Depends(get_db)]):
+    bookmark = db.execute(
+        select(Bookmark).where(Bookmark.id == data.id)
+    ).scalar()
+
+    if bookmark is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bookmark not found")
+
+    bookmark.name = data.name
+
+    db.commit()
 
 
 @router.delete("/delete_bookmark/{bookmark_id}", status_code=status.HTTP_204_NO_CONTENT)

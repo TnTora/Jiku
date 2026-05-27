@@ -57,6 +57,7 @@
     let show_bookmarking_confirmation = $state(false);
     let bookmark_selection: number | null = null;
     let bookmark_selection_name: string | null = $state(null);
+    let bookmark_selection_preview: string | null = null;
 
     let book_container: HTMLDivElement;
     let book_container_height: number = $state(0);
@@ -306,10 +307,15 @@
 
         function handleClick(event: Event) {
             console.log(event);
-            const selected_token = (event.target as Element)?.getAttribute("data-tok");
+            const selected_token = (event.target as HTMLElement)?.getAttribute("data-tok");
             if (selected_token) {
-                console.log("selected", selected_token);
+                // console.log("selected", selected_token);
                 bookmark_selection = Number(selected_token);
+                let parent_p = (event.target as HTMLElement)?.parentElement;
+                while (parent_p && parent_p.getAttribute("data-char-start") === null) {
+                    parent_p = parent_p.parentElement
+                }
+                bookmark_selection_preview = parent_p?.textContent?? null;
                 show_bookmarking_confirmation = true;
             }
             bookmarking = false;
@@ -335,7 +341,7 @@
                 body: JSON.stringify({
                     book_id: book.id,
                     name: bookmark_selection_name,
-                    preview: "Testing Preview",
+                    preview: bookmark_selection_preview,
                     section: curr_section,
                     tok_pos: bookmark_selection,
                 })
@@ -357,6 +363,7 @@
     function cancelBookmarking() {
         show_bookmarking_confirmation = false;
         bookmark_selection_name = null;
+        bookmark_selection_preview = null;
         bookmark_selection = null;
     }
 
