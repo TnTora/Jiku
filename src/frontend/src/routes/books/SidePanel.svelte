@@ -132,7 +132,7 @@
                         onclick={(e) => {
                             e.stopPropagation();
 
-                            confirmation_popup.onOk = async () => {
+                            text_input_popup.onOk = async () => {
                                 if (!text_input_popup.text_input_value) { return; }
 
                                 try {
