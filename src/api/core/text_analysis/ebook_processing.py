@@ -219,7 +219,7 @@ def process_stylesheet(filepath: Path, content: bytes):
     print(filepath)
     rules, _ = tinycss2.parse_stylesheet_bytes(content)
 
-    temp_prelude = tinycss2.parse_stylesheet(".jiku-book-container .jiku-book-body.jiku-book-html{}")[0].prelude
+    temp_prelude = tinycss2.parse_stylesheet("#jiku-book-container .jiku-book-body.jiku-book-html{}")[0].prelude
     # book_container_class = temp_prelude[:3]
     new_body_class = temp_prelude[3:5]
     new_html_class = temp_prelude[5:7]
@@ -244,7 +244,7 @@ def process_stylesheet(filepath: Path, content: bytes):
     for i in reversed(to_delete):
         rules.pop(i)
 
-    book_container_rule = tinycss2.parse_stylesheet(".jiku-book-container{}")[0]
+    book_container_rule = tinycss2.parse_stylesheet("#jiku-book-container{}")[0]
     book_container_rule.content = rules
     rules_new.append(book_container_rule)
 
