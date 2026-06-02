@@ -1,6 +1,7 @@
 import re
 from collections.abc import Iterator
 from pathlib import Path
+from os import PathLike
 
 import ebooklib
 import tinycss2
@@ -28,9 +29,12 @@ from api.db.models.books import (
     LastPosition,
 )
 
-from sqlalchemy import select, insert
+from api.celery_worker import celery_app
 
-from typing import Any
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+
+from typing import Any, BinaryIO
 
 
 @dataclass
@@ -44,8 +48,9 @@ def store_tokens_count(book_id:int, tokens_count: dict[str, dict[str, Any]], db:
     existing = db.execute(
         select(BookToken.inflection).where(BookToken.inflection.in_(tokens_count))
     )
+
     db.execute(
-        insert(BookToken),
+        insert(BookToken).on_conflict_do_nothing(),
         [
             {
                 "lemma": v["morph"].lemma,
@@ -70,159 +75,154 @@ def store_tokens_count(book_id:int, tokens_count: dict[str, dict[str, Any]], db:
     )
 
 
-def process_ebub(filepath: Path, db: Session) -> Book:
-    book = epub.read_epub(filepath)
-    spine: list[str] = [section_name for section_name, linear in book.spine if linear]
+def process_toc(book_id: int, documents_id_dict: dict[str, str], toc_items: list, toc: list) -> None:
+    for item in toc_items:
+        if isinstance(item, tuple):
+            href_path = Path(item[0].href)
+            anchor_match = re.search(r"(?<=#).+",href_path.suffix)
+            anchor = anchor_match.group() if anchor_match else None
+
+            toc.append(
+                TocItem(
+                    book_id=book_id,
+                    title=item[0].title,
+                    section=documents_id_dict[href_path.stem],
+                    anchor_id=anchor,
+                    number=len(toc)
+                )
+            )
+
+            process_toc(book_id, documents_id_dict, item[1], toc)
+
+        else:
+            href_path = Path(item.href)
+            anchor_match = re.search(r"(?<=#).+",href_path.suffix)
+            anchor = anchor_match.group() if anchor_match else None
+            toc.append(
+                TocItem(
+                    book_id=book_id,
+                    title=item.title,
+                    section=documents_id_dict[href_path.stem],
+                    anchor_id=anchor,
+                    number=len(toc)
+                )
+            )
 
 
-    processed_book = Book(
-        title=book.get_metadata("DC", "title")[0][0],
-        raw_metadata=book.metadata,
-        stylesheets=[],
-        spine=spine,
-        thumb=None,
-        original_file=filepath.name,
-        static_url="http://127.0.0.1:8000/static/books",
-        total_char=0,
-        total_tokens=0,
-    )
+@celery_app.task
+def process_ebub(source: PathLike | BinaryIO, filename: str) -> None:
+    with SessionLocal() as db:
+        book = epub.read_epub(source)
+        spine: list[str] = [section_name for section_name, linear in book.spine if linear]
 
-    db.add(processed_book)
-    db.flush()
-    db.refresh(processed_book)
-
-    book_id = processed_book.id
-
-    last_pos = LastPosition(book_id=book_id, section=spine[0])
-    db.add(last_pos)
-
-    base_path = config_path / Path(f"books/{book_id}/")
-    base_path.mkdir(parents=True, exist_ok=True)
-    (base_path / "stylesheets").mkdir(parents=True, exist_ok=True)
-    (base_path / "content").mkdir(parents=True, exist_ok=True)
-    (base_path / "images").mkdir(parents=True, exist_ok=True)
-
-
-    for creator_data in book.get_metadata("DC", "creator"):
-        creator = db.execute(
-            select(Creator).where(Creator.name == creator_data[0])
-        ).scalars().one_or_none()
-
-        if creator is None:
-            creator = Creator(name=creator_data[0])
-
-            db.add(creator)
-            db.flush()
-            db.refresh(creator)
-
-        db.add(CreatorBook(
-            book_id=book_id,
-            creator_id=creator.id,
-        ))
-
-    stats = BookStats()
-
-    stylesheets:set[str] = set()
-
-    cover = None
-
-    documents_id_dict = {}
-
-    for img in book.get_items_of_type(ebooklib.ITEM_COVER):
-        cover = Path(img.get_name()).name
-        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
-
-    for img in book.get_items_of_type(ebooklib.ITEM_IMAGE):
-        (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
-
-    for stylesheet in book.get_items_of_type(ebooklib.ITEM_STYLE):
-        filename = Path(stylesheet.get_name()).name
-        process_stylesheet(base_path / "stylesheets" / filename, stylesheet.get_content())
-
-    for idref in spine:
-        doc = book.get_item_with_id(idref)
-        filename = Path(doc.get_name()).name
-        print(filename)
-
-        section: Section = process_html_content(
-            base_path / "content" / filename,
-            doc.content,
-            book_id,
-            stats
+        processed_book = Book(
+            title=book.get_metadata("DC", "title")[0][0],
+            raw_metadata=book.metadata,
+            stylesheets=[],
+            spine=spine,
+            thumb=None,
+            original_file=filename,
+            static_url="http://127.0.0.1:8000/static/books",
+            total_char=0,
+            total_tokens=0,
         )
 
-        section.key = doc.id
+        db.add(processed_book)
+        db.flush()
+        db.refresh(processed_book)
 
-        documents_id_dict[Path(doc.get_name()).stem] = doc.id
+        book_id = processed_book.id
 
-        try:
-            section.number = spine.index(section.key)
-        except ValueError:
-            section.number = -1
+        last_pos = LastPosition(book_id=book_id, section=spine[0])
+        db.add(last_pos)
 
-        stylesheets.update(section.stylesheets)
-
-        db.add(section)
-
-    store_tokens_count(book_id, stats.tokens_count, db)
-
-    toc: list[TocItem] = []
-
-    def process_toc(toc_items: list) -> None:
-        for item in toc_items:
-            if isinstance(item, tuple):
-                href_path = Path(item[0].href)
-                anchor_match = re.search(r"(?<=#).+",href_path.suffix)
-                anchor = anchor_match.group() if anchor_match else None
-
-                toc.append(
-                    TocItem(
-                        book_id=book_id,
-                        title=item[0].title,
-                        section=documents_id_dict[href_path.stem],
-                        anchor_id=anchor,
-                        number=len(toc)
-                    )
-                )
-
-                process_toc(item[1])
-
-            else:
-                href_path = Path(item.href)
-                anchor_match = re.search(r"(?<=#).+",href_path.suffix)
-                anchor = anchor_match.group() if anchor_match else None
-                toc.append(
-                    TocItem(
-                        book_id=book_id,
-                        title=item.title,
-                        section=documents_id_dict[href_path.stem],
-                        anchor_id=anchor,
-                        number=len(toc)
-                    )
-                )
+        base_path = config_path / Path(f"books/{book_id}/")
+        base_path.mkdir(parents=True, exist_ok=True)
+        (base_path / "stylesheets").mkdir(parents=True, exist_ok=True)
+        (base_path / "content").mkdir(parents=True, exist_ok=True)
+        (base_path / "images").mkdir(parents=True, exist_ok=True)
 
 
-    process_toc(book.toc)
+        for creator_data in book.get_metadata("DC", "creator"):
+            db.execute(
+                insert(Creator).on_conflict_do_nothing(),
+                [{"name": creator_data[0]}]
+            )
 
-    processed_book.stylesheets = list(stylesheets)
-    processed_book.thumb = cover
-    processed_book.total_char = stats.total_char
-    processed_book.total_tokens = stats.total_tokens
+            creator = db.execute(
+                select(Creator).where(Creator.name == creator_data[0])
+            ).scalars().one()
 
-    db.add_all(toc)
-    db.commit()
+            db.add(CreatorBook(
+                book_id=book_id,
+                creator_id=creator.id,
+            ))
 
-    return processed_book
+        stats = BookStats()
+
+        stylesheets:set[str] = set()
+
+        cover = None
+
+        documents_id_dict = {}
+
+        for img in book.get_items_of_type(ebooklib.ITEM_COVER):
+            cover = Path(img.get_name()).name
+            (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
+
+        for img in book.get_items_of_type(ebooklib.ITEM_IMAGE):
+            (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
+
+        for stylesheet in book.get_items_of_type(ebooklib.ITEM_STYLE):
+            filename = Path(stylesheet.get_name()).name
+            process_stylesheet(base_path / "stylesheets" / filename, stylesheet.get_content())
+
+        for idref in spine:
+            doc = book.get_item_with_id(idref)
+            filename = Path(doc.get_name()).name
+            print(filename)
+
+            section: Section = process_html_content(
+                base_path / "content" / filename,
+                doc.content,
+                book_id,
+                stats
+            )
+
+            section.key = doc.id
+
+            documents_id_dict[Path(doc.get_name()).stem] = doc.id
+
+            try:
+                section.number = spine.index(section.key)
+            except ValueError:
+                section.number = -1
+
+            stylesheets.update(section.stylesheets)
+
+            db.add(section)
+
+        store_tokens_count(book_id, stats.tokens_count, db)
+
+        toc: list[TocItem] = []
+        process_toc(book_id, documents_id_dict, book.toc, toc)
+
+        processed_book.stylesheets = list(stylesheets)
+        processed_book.thumb = cover
+        processed_book.total_char = stats.total_char
+        processed_book.total_tokens = stats.total_tokens
+
+        db.add_all(toc)
+        db.commit()
 
 
 def process_stylesheet(filepath: Path, content: bytes):
     print(filepath)
     rules, _ = tinycss2.parse_stylesheet_bytes(content)
 
-    temp_prelude = tinycss2.parse_stylesheet("#jiku-book-container .jiku-book-body.jiku-book-html{}")[0].prelude
-    # book_container_class = temp_prelude[:3]
-    new_body_class = temp_prelude[3:5]
-    new_html_class = temp_prelude[5:7]
+    temp_prelude = tinycss2.parse_stylesheet(".jiku-book-body.jiku-book-html{}")[0].prelude
+    new_body_class = temp_prelude[:2]
+    new_html_class = temp_prelude[2:]
 
     to_delete = []
     exclude_at_rules = {"media", "supports", "layer", "scope", "container", "starting-style"}
@@ -556,7 +556,7 @@ if __name__ == "__main__":
             print(i, test_book)
             # book = process_ebub(test_book, i+1)
             try:
-                book = process_ebub(test_book, db)
+                book = process_ebub(test_book, test_book.name ,db)
                 books.append(book)
             except Exception as e:  # noqa: BLE001
                 print(e)

@@ -2,12 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from api.db import Base, engine
-
-
-from .routers import texthooker, books
-
 from api.core.config import config_path
+from api.db import Base, engine
+from api.routers import texthooker, books
 
 ################ Logging Setup ###########################################################
 

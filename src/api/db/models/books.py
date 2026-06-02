@@ -62,7 +62,7 @@ class BookTokenCount(Base):
     __tablename__ = "booktokencount"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), nullable=False)
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id", ondelete="CASCADE"), nullable=False)
     morph_inflection: Mapped[str] = mapped_column(ForeignKey("bookstokens.inflection"), nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False)
 

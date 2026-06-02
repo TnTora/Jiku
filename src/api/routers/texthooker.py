@@ -6,6 +6,7 @@ from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse
 from api.db import get_db
 
 from sqlalchemy import select, delete, distinct, func
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from api.db.models.texthooker import Line, LineLineToken, LineToken
 from api.db.models.core import AnkiNoteMorpheme, AnkiNote, Morpheme
@@ -65,15 +66,21 @@ def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
 
     analyzer = get_analyzer()
     tokens = []
+    llts = []
 
     for i, tok in enumerate(analyzer.parse(correct_line_whitespace(line.text), line_model=True)):
         tokens.append(tok)
 
-        db.add(LineLineToken(
-            line_id=new_line.id,
-            token_inflection=tok.inflection,
-            order_ref=i,
-        ))
+        llts.append({
+            "line_id":new_line.id,
+            "token_inflection":tok.inflection,
+            "order_ref":i,
+        })
+
+    db.execute(
+        insert(LineLineToken).on_conflict_do_nothing(),
+        llts,
+    )
 
     db.add_all(tokens)
     db.commit()

@@ -1,14 +1,16 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-from api.core.config import config_path
+import redis
+import os
 
-SQL_DATABASE_URL = f"sqlite:///{config_path / "userdata.db"}"
+redisdb = redis.Redis(host="localhost", port=6379, db=1, decode_responses=True)
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(
-    SQL_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    echo=True,
+    DATABASE_URL,
+    # echo=True,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
