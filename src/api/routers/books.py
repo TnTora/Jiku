@@ -1,4 +1,5 @@
-from fastapi import APIRouter, status, Depends, HTTPException
+from api.core.text_analysis.ebook_processing import process_ebub
+from fastapi import APIRouter, status, Depends, HTTPException, UploadFile
 
 from api.schemas.books import (
     BookRespone,
@@ -31,7 +32,9 @@ from api.db.models.books import (
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
-from api.core.config import config_path
+import shutil
+
+from api.core.config import config_path, tmp_path
 
 from typing import Annotated
 
@@ -293,6 +296,7 @@ def delete_book(book_id: int, db: Annotated[Session, Depends(get_db)]):
 
     db.delete(book)
     db.commit()
+    shutil.rmtree(config_path / "books" / str(book_id))
 
 
 @router.delete("/delete_collection/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -305,3 +309,15 @@ def delete_collection(collection_id: int, db: Annotated[Session, Depends(get_db)
     db.delete(collection)
     db.commit()
 
+
+@router.post("/add_book")
+def add_book(file: UploadFile):
+    if file.filename is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="filename not found")
+    print("Saving file: ", file.filename)
+    content = file.file.read()
+    tmp_file = (tmp_path / file.filename)
+    tmp_file.write_bytes(content)
+    result = process_ebub.delay(str(tmp_file), file.filename)
+    print(f"{result.id = }")
+    return {"id": result.id}
