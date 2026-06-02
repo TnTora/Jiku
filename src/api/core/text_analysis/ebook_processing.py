@@ -325,18 +325,19 @@ class TokenizationContext:
     stats: BookStats
     p_tag: Tag
     new_content: list[str] = field(default_factory=list)
+    open_tags: list[Tag] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.next_token()
 
     def next_token(self) -> Morpheme | None:
-        next_token = next(self.tokens, None)
+        next_token_v = next(self.tokens, None)
 
-        if next_token is None:
+        if next_token_v is None:
             self.tokens_exhausted = True
             return None
 
-        self.curr_token = next_token
+        self.curr_token = next_token_v
         self.tokens_exhausted = False
 
         if self.curr_token.inflection.lower() in self.stats.tokens_count:
@@ -347,7 +348,7 @@ class TokenizationContext:
                 "count": 1
             }
 
-        return next_token
+        return next_token_v
 
 
 def content_tokenization(soup: BeautifulSoup, stats: BookStats):
@@ -361,10 +362,8 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
             continue
 
         tokens = analyzer.parse(p_text, pos_exclude={"SPACE", "PUNCT", "SYM", "X"}, line_model=False)
-        # print(f"{tokens}, {type(tokens)}")
-        # print(p_tag, "\n")
+        # print("p_tag", p_tag.prettify(), "\n")
         start_ch = stats.total_char
-        # original_attrs = p_tag.attrs
 
         tokenization_context = TokenizationContext(
             tokens = tokens,
@@ -409,11 +408,14 @@ def handle_html_node(node: PageElement, context: TokenizationContext) -> None:
 
         open_tag = re.search(r"<.*?>", str(node)).group()  # ty:ignore[unresolved-attribute]
         context.new_content.append(open_tag)
+        context.open_tags.append(node)
 
         for child in node.children:
             handle_html_node(child, context)
 
-        context.new_content.append(f"</{node.name}>")
+        if context.open_tags and context.open_tags[-1] is node:
+            context.new_content.append(f"</{node.name}>")
+            context.open_tags.pop()
 
     else:
         handle_nav_string(node, context)
@@ -431,8 +433,13 @@ def handle_nav_string(node: NavigableString, context: TokenizationContext) -> bo
                     if node.parent is context.p_tag or node.parent.name == "ruby":  # ty:ignore[unresolved-attribute]
                         context.new_content.append("</span>")
                     else:
-                        open_tag = re.search(r"<.*?>", str(node.parent)).group()  # ty:ignore[unresolved-attribute]
-                        context.new_content.append(f"</{node.name}></span>{open_tag}")
+                        context.new_content.append(f"</{node.parent.name}>")  # ty:ignore[unresolved-attribute]
+                        context.new_content.append("</span>")
+                        if len(node) > idx_increment:
+                            open_tag = re.search(r"<.*?>", str(node.parent)).group()  # ty:ignore[unresolved-attribute]
+                            context.new_content.append(open_tag)
+                        else:
+                            context.open_tags.pop()
                     # context.curr_token = next(context.tokens, None)
                     context.next_token()
                     context.partial_match_end_idx = 0
@@ -454,13 +461,24 @@ def handle_nav_string(node: NavigableString, context: TokenizationContext) -> bo
                         context.partial_match_end_idx = end
                         context.stats.total_tokens += 1
                         context.stats.total_char += len(context.curr_token.inflection)
-                        context.new_content.append(curr_text[:-end])
+
+                        unmatched_text = curr_text[:-end]
+                        if unmatched_text:
+                            context.new_content.append(unmatched_text)
+
                         if node.parent is context.p_tag or node.parent.name == "ruby":  # ty:ignore[unresolved-attribute]
                             context.new_content.append(f'<span class="tok-{context.curr_token.lemma} status-underline" data-tok={context.stats.total_tokens}>')
                             context.new_content.append(context.curr_token.inflection[:end])
                         else:
                             open_tag = re.search(r"<.*?>", str(node.parent)).group()  # ty:ignore[unresolved-attribute]
-                            context.new_content.append(f'</{node.parent.name}><span class="tok-{context.curr_token.lemma} status-underline" data-tok={context.stats.total_tokens}>')  # ty:ignore[unresolved-attribute]
+
+                            if not unmatched_text:
+                                context.new_content.pop()
+                                close_tag = ""
+                            else:
+                                close_tag = f"</{node.parent.name}>" # ty:ignore[unresolved-attribute]
+
+                            context.new_content.append(f'{close_tag}<span class="tok-{context.curr_token.lemma} status-underline" data-tok={context.stats.total_tokens}>')
                             context.new_content.append(f"{open_tag}{context.curr_token.inflection[:end]}")
                         return False
                 context.new_content.append(curr_text)
@@ -495,6 +513,7 @@ def handle_ruby(node: Tag, context: TokenizationContext):
             continue
 
         starting_token = context.curr_token
+        mid_token = context.partial_match_end_idx > 0
 
         if open_tag_idx < 0:
             open_tag_idx = len(context.new_content)
@@ -503,22 +522,26 @@ def handle_ruby(node: Tag, context: TokenizationContext):
         if isinstance(child.next_sibling, Tag) and child.next_sibling.name == "rt":
             rt.append(child.next_sibling.get_text())
 
-        if isinstance(child, NavigableString):
-            handle_nav_string(child, context)
-        else:
-            handle_html_node(child, context)
+        handle_html_node(child, context)
 
         if starting_token != context.curr_token:
-            context.new_content.append(f"<rt>{"".join(rt)}</rt>")
+            if mid_token:
+                context.new_content.insert(-1, f"<rt>{"".join(rt)}</rt>")
+                context.new_content.insert(-1, "</ruby>")
+            else:
+                context.new_content.append(f"<rt>{"".join(rt)}</rt>")
+                context.new_content.append("</ruby>")
+
             rt = []
-            context.new_content.append("</ruby>")
             open_tag_idx = -1
+            mid_token = False
 
     if open_tag_idx >= 0:
-        context.new_content.pop(open_tag_idx)
-        for i in range(open_tag_idx, len(context.new_content)):
-            if "data-tok" in context.new_content[i]:
-                context.new_content.insert(i+1, "<ruby>")
+        if not mid_token:
+            context.new_content.pop(open_tag_idx)
+            for i in range(open_tag_idx, len(context.new_content)):
+                if "data-tok" in context.new_content[i]:
+                    context.new_content.insert(i+1, "<ruby>")
         context.new_content.append(f"<rt>{"".join(rt)}</rt></ruby>")
 
 
