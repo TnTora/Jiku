@@ -101,11 +101,11 @@
         {#each book.bookmarks as entry}
             <li class="flex items-center justify-between {editing? "editing": ""}">
                 <button
-                    class="mr-3 grid grid-cols-[1fr_auto] grid-rows-[auto_auto] gap-x-2 justify-between items-center"
+                    class="mr-3 grid grid-cols-[1fr_auto] grid-rows-[auto_auto] gap-x-3 justify-between items-center"
                     onclick={() => { updatePosition(entry.section, entry.tok_pos) }}
                 >
                     <span class="col-start-1 col-end-2 row-start-1 row-end-2">{entry.name}</span>
-                    <span class="col-start-1 col-end-2 row-start-2 row-end-3 text-sm text-neutral-400">{entry.preview}</span>
+                    <span class="col-start-1 col-end-2 row-start-2 row-end-3 text-sm max-h-10 overflow-y-scroll text-neutral-400">{entry.preview}</span>
                     <span class="col-start-2 col-end-3 row-start-1 row-end-3">{entry.tok_pos}</span>
                     
                 </button>

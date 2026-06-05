@@ -58,7 +58,6 @@ transform: translateY(-50%);
     --w: 0.20rem;   /* the width of the underline */
     --c: rgb(222, 166, 101); /* the default color */
     
-    /* line-height: calc(.5rem + var(--w)); */
     padding-left: calc(var(--w) + .2rem);
     background: left/calc(var(--w)) calc(100% - 0.25rem) no-repeat;
     --_g: calc(var(--w)/2) left 50%,var(--c) calc(var(--w)/2),#0000 calc(var(--w)/2) 100%;
@@ -72,7 +71,6 @@ transform: translateY(-50%);
     --h: 0.20rem;     /* the height of the underline */
     --c: rgb(222, 166, 101); /* the default color */
     
-    /* line-height: calc(1.5rem + var(--h)); */
     padding-bottom: calc(var(--h) + 0.1rem);
     background: bottom/calc(100% - 0.25rem) calc(var(--h)) no-repeat;
     --_g: calc(var(--h)/2) top 50%,var(--c) calc(var(--h)/2),#0000 calc(var(--h)/2) 100%;
