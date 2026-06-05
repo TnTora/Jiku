@@ -1,3 +1,5 @@
+import shutil
+from celery.contrib.abortable import AbortableTask
 import re
 from collections.abc import Iterator
 from pathlib import Path
@@ -109,11 +111,20 @@ def process_toc(book_id: int, documents_id_dict: dict[str, str], toc_items: list
             )
 
 
-@celery_app.task
-def process_ebub(source: PathLike | BinaryIO, filename: str) -> None:
+def cleanup_aborted_epub(book_id: int, db: Session) -> None:
+    db.rollback()
+    shutil.rmtree(config_path / "books" / str(book_id))
+
+
+@celery_app.task(bind=True, base=AbortableTask)
+def process_ebub(self, source: PathLike | BinaryIO, filename: str) -> None:
     with SessionLocal() as db:
         book = epub.read_epub(source)
         spine: list[str] = [section_name for section_name, linear in book.spine if linear]
+        total_steps = len(spine) + 4 # Generate metadata, Write files, store tokens, process toc
+        current_step = 0
+        self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
+
 
         processed_book = Book(
             title=book.get_metadata("DC", "title")[0][0],
@@ -158,6 +169,9 @@ def process_ebub(source: PathLike | BinaryIO, filename: str) -> None:
                 creator_id=creator.id,
             ))
 
+        current_step += 1
+        self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
+
         stats = BookStats()
 
         stylesheets:set[str] = set()
@@ -176,6 +190,9 @@ def process_ebub(source: PathLike | BinaryIO, filename: str) -> None:
         for stylesheet in book.get_items_of_type(ebooklib.ITEM_STYLE):
             filename = Path(stylesheet.get_name()).name
             process_stylesheet(base_path / "stylesheets" / filename, stylesheet.get_content())
+
+        current_step += 1
+        self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
 
         for idref in spine:
             doc = book.get_item_with_id(idref)
@@ -202,7 +219,17 @@ def process_ebub(source: PathLike | BinaryIO, filename: str) -> None:
 
             db.add(section)
 
+            if self.is_aborted():
+                cleanup_aborted_epub(book_id, db)
+                return
+
+            current_step += 1
+            self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
+
         store_tokens_count(book_id, stats.tokens_count, db)
+
+        current_step += 1
+        self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
 
         toc: list[TocItem] = []
         process_toc(book_id, documents_id_dict, book.toc, toc)
@@ -214,6 +241,9 @@ def process_ebub(source: PathLike | BinaryIO, filename: str) -> None:
 
         db.add_all(toc)
         db.commit()
+
+        current_step += 1
+        self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
 
 
 def process_stylesheet(filepath: Path, content: bytes):
