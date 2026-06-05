@@ -1,5 +1,5 @@
-from api.core.text_analysis.ebook_processing import process_ebub
 from fastapi import APIRouter, status, Depends, HTTPException, UploadFile
+from fastapi.sse import EventSourceResponse, ServerSentEvent
 
 from api.schemas.books import (
     BookRespone,
@@ -29,12 +29,17 @@ from api.db.models.books import (
     CollectionBook
 )
 
+from api.core.text_analysis.ebook_processing import process_ebub
+from api.core.config import config_path, tmp_path
+
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
+import json
+import redis.asyncio as redis
 import shutil
 
-from api.core.config import config_path, tmp_path
+from datetime import datetime, timedelta, UTC
 
 from typing import Annotated
 
@@ -310,14 +315,74 @@ def delete_collection(collection_id: int, db: Annotated[Session, Depends(get_db)
     db.commit()
 
 
+active_tasks_ids = {}
+
+@router.get("/tasks_events", response_class=EventSourceResponse)
+async def tasks_events():
+    print("tasks_events")
+    async with redis.Redis(host="localhost", port=6379, db=0, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
+        await pubsub.subscribe("__keyevent@0__:set")
+
+        last_message = datetime.now(UTC)
+
+        while True:
+            print("waiting for message...")
+            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=30)
+            print(message)
+
+            if not active_tasks_ids and (datetime.now(UTC)-last_message > timedelta(seconds=30)):
+                break
+
+            if message is None:
+                continue
+
+            print('message["data"]', message["data"], " | ", str(type(message["data"])))
+
+            task = await redisdb.get(message["data"])
+
+            try:
+                task = json.loads(task)
+                task_id = task["task_id"]
+                task_status = task["status"]
+            except (TypeError, KeyError, json.JSONDecodeError):
+                continue
+
+            last_message = datetime.now(UTC)
+
+            print(task, task_id, task_status, sep="\n")
+
+            name = active_tasks_ids.get(task_id, "Task")
+            task["name"] = name
+
+            if task_status in {"FAILURE", "SUCCESS"} and task_id in active_tasks_ids:
+                del active_tasks_ids[task_id]
+
+            yield task
+
+            if not active_tasks_ids:
+                break
+
+        print("unsubscribing...")
+        await pubsub.unsubscribe()
+        yield ServerSentEvent(event="close", data="")
+        print("unsubscribed")
+
+
+
+
+
 @router.post("/add_book")
 def add_book(file: UploadFile):
     if file.filename is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="filename not found")
+
     print("Saving file: ", file.filename)
     content = file.file.read()
     tmp_file = (tmp_path / file.filename)
     tmp_file.write_bytes(content)
+
     result = process_ebub.delay(str(tmp_file), file.filename)
+
     print(f"{result.id = }")
+    active_tasks_ids[result.id] = file.filename
     return {"id": result.id}

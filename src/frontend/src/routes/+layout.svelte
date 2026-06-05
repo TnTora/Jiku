@@ -7,12 +7,16 @@
 	import ConfirmationPopup from '$lib/components/ConfirmationPopup.svelte';
 	import TextInputPopup from '$lib/components/TextInputPopup.svelte';
 	import type { ConfirmationPopupContext, TextInputPopupContext } from '$lib/utils/context';
+	import { setTasksContext } from '$lib/utils/taskEventSource.svelte';
+	import { onMount } from 'svelte';
+	import TasksMonitor from '$lib/components/TasksMonitor.svelte';
 
 
 	let { children } = $props();
 	// let test_errors = [{short: "test1", details:"test message 1"}, {short: "test2", details:"test message 2"}];
 	let errors = $state([]);
 	setJikuErrorsContext(errors);
+	const task_context = setTasksContext("http://127.0.0.1:8000/books/tasks_events");
 
 
 	let confirmation_popup: ConfirmationPopupContext = $state({
@@ -58,6 +62,10 @@
 		}
 	}
 
+	onMount(() => {
+		task_context.connect();
+	});
+
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -86,6 +94,10 @@
 		}}
 		onOk={modalOkWrapper(text_input_popup.onOk)}
 	/>
+{/if}
+
+{#if task_context.tasks.size > 0}
+	<TasksMonitor />
 {/if}
 
 {@render children()}

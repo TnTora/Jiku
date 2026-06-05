@@ -15,7 +15,7 @@
     import { addBookToCollection } from "./requests.js";
 
     import type { SelectCollectionPopupContext } from "./context.js";
-	
+
 
     const errors = getJikuErrorsContext();
     const confirmation_popup = getConfirmationPopupContext();
@@ -89,7 +89,7 @@
 
     onMount(() => {
         title_search = page.url.searchParams.get("title")?? "";
-    })
+    });
 
 </script>
 
@@ -226,7 +226,7 @@
         <BookGridDisplay bind:selected={selected} bind:selecting={selecting} items={data.books} item_min_w={`${item_size_rem}rem`}/>
     </div>
 
-    <div class="h-8 px-2 py-2 flex items-center justify-between" style="grid-area: footer">
+    <div class="h-8 px-3 py-2 flex items-center justify-between" style="grid-area: footer">
         <div class="flex items-center justify-start gap-3">
         {#if selecting}
             <button

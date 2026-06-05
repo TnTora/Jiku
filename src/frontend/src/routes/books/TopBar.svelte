@@ -1,6 +1,30 @@
-<script>
+<script lang="ts">
+    import { getTasksContext } from "$lib/utils/taskEventSource.svelte";
+
+    let task_context = getTasksContext();
+
+    console.log(task_context);
+
     let { toggleSidePanel, show_side_panel=$bindable() } = $props();
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
+
+    async function handleFilesInput (this: HTMLInputElement) {
+        if (!this.files) { return; }
+        console.log("files input");
+
+        task_context.connect();
+
+        for (const file of this.files) {
+            console.log(file.name);
+            const formData = new FormData();
+            formData.append("file", file, file.name);
+            await fetch(`http://127.0.0.1:8000/books/add_book`, {
+                method: "POST",
+                body: formData,
+            })
+        }
+    }
+
 </script>
 
 <div class="bg-neutral-800 h-11 w-full flex justify-between items-center gap-x-1.5 z-20">
@@ -28,7 +52,9 @@
                     <path d="M19.5 18s-1 .763-1 2s1 2 1 2M9 10s2.21-3 3-3s3 3 3 3m-3-2.5V13" />
                 </g>
             </svg>
-            <input type="file" multiple accept=".epub" title="Upload" style="display: none;">
+            <input type="file" multiple accept=".epub" title="Upload" style="display: none;"
+                oninput={handleFilesInput}
+            >
         </label>
     </div>
 </div>
