@@ -1,12 +1,16 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-import redis
 import os
 
-redisdb = redis.Redis(host="localhost", port=6379, db=1, decode_responses=True)
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL is None:
+    raise ValueError("DATABASE_URL not set in env.")
 
 engine = create_engine(
     DATABASE_URL,
