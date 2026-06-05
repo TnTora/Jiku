@@ -10,6 +10,7 @@
     import BookRender from "./BookRender.svelte";
 	import { goto } from "$app/navigation";
 	import TextInputPopup from "$lib/components/TextInputPopup.svelte";
+	import { browser } from "$app/environment";
 
     let { data } = $props();
     let { book, status_map } = $derived(data);
@@ -35,15 +36,33 @@
     let content = $state("");
     let backward_load = false;
 
+    function loadOptions() {
+        let stored;
 
-    let options = $state({
-        font_size: 20,
-        line_height: 2.25,
-        vertical: true,
-        paginated: true,
-        show_progress_bar: true,
-        show_progress_tokens: true,
-        limit_progress_to_section: true,
+        if (browser) {
+            stored = localStorage.getItem("bookreader_options");
+        }
+        
+        if (stored) {
+            return JSON.parse(stored);
+        } else {
+            return {
+                font_size: 20,
+                line_height: 2.25,
+                vertical: true,
+                paginated: true,
+                show_progress_bar: true,
+                show_progress_tokens: true,
+                limit_progress_to_section: true,
+            }
+        }
+
+    }
+
+    let options = $state(loadOptions());
+
+    $effect(() => {
+        localStorage.setItem("bookreader_options", JSON.stringify(options));
     });
 
     setEbookReaderOptionsContext(options);
