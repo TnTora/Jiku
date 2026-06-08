@@ -6,4 +6,4 @@ export interface SelectCollectionPopupContext {
     onOk: (collection_id:number) => any,
 }
 
-export const [getSelectColelctionPopupContext, setSelectColelctionPopupContext] = createContext<SelectCollectionPopupContext>();
+export const [getSelectCollectionPopupContext, setSelectColelctionPopupContext] = createContext<SelectCollectionPopupContext>();

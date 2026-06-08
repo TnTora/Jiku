@@ -1,13 +1,13 @@
 <script lang="ts">
     import { clickOutside } from "$lib/utils/clickOutside";
     import { getConfirmationPopupContext } from "$lib/utils/context";
-    import { getSelectColelctionPopupContext } from "./context";
+    import { getSelectCollectionPopupContext } from "./context";
     import { getJikuErrorsContext } from "$lib/utils/context";
 
     import { addBookToCollection } from "./requests";
 
     const confirmation_popup = getConfirmationPopupContext();
-    const select_collection_popup = getSelectColelctionPopupContext();
+    const select_collection_popup = getSelectCollectionPopupContext();
     const errors = getJikuErrorsContext();
 
     let { item, deleteBook } = $props();
