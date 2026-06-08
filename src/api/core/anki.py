@@ -4,7 +4,8 @@ import urllib.request
 import urllib.error
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
-from api.core.config.anki import AnkiSettings, load_settings_from_db, SearchParameters
+from api.core.config import load_settings_from_db
+from api.core.config.anki import AnkiSettings
 from api.db import SessionLocal
 from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme, KnownStatus
 
@@ -37,8 +38,8 @@ class AnkiError(Exception):
         return f"AnkiConnect: {self.msg}"
 
 
-with SessionLocal() as db:
-    anki_settings: AnkiSettings = load_settings_from_db(db)
+
+anki_settings: AnkiSettings = load_settings_from_db("anki")
 
 
 def request(action: str, **params) -> dict[str, Any]:
