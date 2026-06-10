@@ -1,5 +1,6 @@
 <script lang="ts">
 	import './layout.css';
+	import { browser } from '$app/environment';
 	import favicon from '$lib/assets/favicon.svg';
 	import { setJikuErrorsContext } from '$lib/utils/context';
 	import { setConfirmationPopupContext, setTextInputPopupContext } from '$lib/utils/context';
@@ -13,6 +14,23 @@
 
 
 	let { children } = $props();
+
+
+	// Initialize localStorage default values
+	if (browser) {
+		let texthooker_presets = localStorage.getItem("texthooker_presets");
+		if (!texthooker_presets) {
+			const presets_names = ["Default"];
+			const default_preset = {
+                    websocket_url: "ws://localhost:6677",
+                    font_size: 22,
+                    vertical: false,
+                }
+			localStorage.setItem("texthooker_presets", JSON.stringify(presets_names));
+			localStorage.setItem("texthooker_preset_Default", JSON.stringify(default_preset));
+		}
+	}
+
 	// let test_errors = [{short: "test1", details:"test message 1"}, {short: "test2", details:"test message 2"}];
 	let errors = $state([]);
 	setJikuErrorsContext(errors);
