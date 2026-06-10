@@ -11,6 +11,7 @@ from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme, KnownStatus
 
 from datetime import datetime
 from sqlalchemy import select, update, delete
+from sqlalchemy.dialects.postgresql import insert
 
 from typing import Any
 from collections.abc import Iterable
@@ -148,9 +149,9 @@ def update_existing_notes() -> None:
 
         db.execute(
             update(AnkiNote)
-            .where(AnkiNote.status == "new")
+            .where(AnkiNote.status == KnownStatus.NEW.value)
             .where(AnkiNote.nid.not_in(anki_notes))
-            .values(status="known")
+            .values(status=KnownStatus.KNOWN.value)
         )
 
         db.commit()
@@ -177,10 +178,15 @@ def update_morphemes_db() -> None:
                 )
 
                 notes_count = len(notes)
+
+                msg = f"Found {notes_count} notes."
+                logger.debug(msg)
+
                 morphemes = set()
+                ankinote_morphemes = []
 
                 for i, (note, text) in enumerate(get_notes_info(notes, params.text_field)):
-                    print(f"{i+1}/{notes_count}")
+                    print(f"{i+1}/{notes_count}, {text}")
 
                     db.add(AnkiNote(
                         nid=note,
@@ -194,15 +200,29 @@ def update_morphemes_db() -> None:
                         if morph in note_morphs:
                             continue
                         note_morphs.add(morph)
-                        db.add(AnkiNoteMorpheme(note_id=note, morph_inflection=morph.inflection))
+                        ankinote_morphemes.append(AnkiNoteMorpheme(note_id=note, morph_inflection=morph.inflection))
 
                     morphemes.update(note_morphs)
 
-                db.add_all([
-                    morph
+                morphs_to_add = [
+                    {"lemma": morph.lemma, "inflection": morph.inflection, "pos": morph.pos, "tag": morph.tag}
                     for morph in morphemes
                     if morph.inflection not in existing_morphs
-                ])
+                ]
+
+                if morphs_to_add:
+                    db.execute(
+                        insert(Morpheme).on_conflict_do_nothing(),
+                        [
+                            {"lemma": morph.lemma, "inflection": morph.inflection, "pos": morph.pos, "tag": morph.tag}
+                            for morph in morphemes
+                            if morph.inflection not in existing_morphs
+                        ]
+                    )
+
+                db.flush()
+
+                db.add_all(ankinote_morphemes)
 
                 db.commit()
                 existing_morphs.update([morph.inflection for morph in morphemes])
