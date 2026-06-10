@@ -1,7 +1,7 @@
 from __future__ import annotations
 from api.db import Base
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import ForeignKey, Integer, String, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from enum import Enum
@@ -40,7 +40,7 @@ class Morpheme(Base):
 class AnkiNote(Base):
     __tablename__ = "ankinotes"
 
-    nid: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    nid: Mapped[int] = mapped_column(BigInteger, primary_key=True, index=True)
     deck: Mapped[str] = mapped_column(String, nullable=False)
     text_field: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -53,3 +53,6 @@ class Option(Base):
 
     name: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     value: Mapped[str] = mapped_column(String, nullable=False)
+
+    # List of options:
+    # - anki
