@@ -34,7 +34,7 @@
 </script>
 
 
-<GridDisplay {items} bind:selecting={selecting} bind:selected={selected}>
+<GridDisplay {items} bind:selecting={selecting} bind:selected={selected} {item_min_w}>
     {#snippet children(item: any)}
         <BookGridItem
             {item}
