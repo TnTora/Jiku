@@ -34,7 +34,7 @@ def update_anki_settings(new_settings: AnkiSettings, db: Annotated[Session, Depe
             )
         )
     else:
-        settings.value = new_settings.model_dump_json(),
+        settings.value = new_settings.model_dump_json()
 
     db.commit()
 
