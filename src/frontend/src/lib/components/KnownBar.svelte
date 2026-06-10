@@ -1,5 +1,7 @@
 <script lang="ts">
 
+    let { known_morphemes } = $props()
+
 </script>
 
 <div class="flex items-center bg-sky-500 w-fit rounded-b-md">
@@ -7,10 +9,10 @@
         Sync
     </button>
     <button class="mx-2 cursor-pointer">
-        Lemmas: 3000
+        Lemmas: {known_morphemes.lemmas}
     </button>
     <span>|</span>
     <button class="mx-2 cursor-pointer">
-        Inflections: 3000
+        Inflections: {known_morphemes.inflections}
     </button>
 </div>
