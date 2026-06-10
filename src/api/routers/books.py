@@ -26,7 +26,7 @@ from api.db.models.books import (
     Creator,
     Collection,
     CreatorBook,
-    CollectionBook
+    CollectionBook, BookTokenCount
 )
 
 from api.core.text_analysis.ebook_processing import process_ebub
@@ -59,11 +59,12 @@ def get_book(id: int, db: Annotated[Session, Depends(get_db)]):  # noqa: A002
         )
 
     status_result = db.execute(
-        select(Morpheme.lemma, func.max(AnkiNote.status))
-        .join(AnkiNoteMorpheme, Morpheme.inflection == AnkiNoteMorpheme.morph_inflection)
+        select(BookToken.lemma, func.max(AnkiNote.status))
+        .join(AnkiNoteMorpheme, BookToken.inflection == AnkiNoteMorpheme.morph_inflection)
         .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
-        .where(Morpheme.lemma.in_(select(BookToken.lemma).distinct()))
-        .group_by(Morpheme.lemma)
+        .join(BookTokenCount, BookTokenCount.morph_inflection == BookToken.inflection)
+        .where(BookTokenCount.book_id == id)
+        .group_by(BookToken.lemma)
     )
 
     status_map = {lemma: status for lemma, status in status_result}  # noqa: C416
