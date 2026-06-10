@@ -10,3 +10,8 @@ class Morpheme(BaseModel):
     inflection: str = Field(min_length=1, max_length=100)
     pos: str = ""
     tag: str = ""
+
+
+class KnownMorphemes(BaseModel):
+    lemmas: int
+    inflections: int

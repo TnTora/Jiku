@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api.core.config import config_path
 from api.db import Base, engine
-from api.routers import texthooker, books, options
+from api.routers import texthooker, books, options, anki
 
 ################ Logging Setup ###########################################################
 
@@ -41,6 +41,7 @@ app.mount("/static/books", StaticFiles(directory=books_path), name="static-books
 app.include_router(texthooker.router, prefix="/texthooker")
 app.include_router(books.router, prefix="/books")
 app.include_router(options.router, prefix="/options")
+app.include_router(anki.router, prefix="/anki")
 
 origins = ["http://localhost:5173"]
 
