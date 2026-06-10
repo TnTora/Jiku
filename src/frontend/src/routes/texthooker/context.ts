@@ -1,7 +1,6 @@
 import { createContext } from "svelte";
 
 interface TextHookerOptions {
-    preset_name: string,
     websocket_url?: string,
     font?: string,
     font_size: number,

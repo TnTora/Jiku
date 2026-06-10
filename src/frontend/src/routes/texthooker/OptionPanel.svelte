@@ -2,7 +2,7 @@
     import { getTextHookerOptionsContext } from "./context";
     import { clickOutside } from "$lib/utils/clickOutside.js";
     import SelectOption from "$lib/components/SelectOption.svelte";
-    let { onoutsideclick } = $props();
+    let { onoutsideclick, presets, preset_name = $bindable() } = $props();
     let options = getTextHookerOptionsContext();
 </script>
 
@@ -11,8 +11,10 @@
     <h2 class="col-span-2 text-xl font-bold mt-4" style="margin-top:0;">Main</h2>
     
     <label for="preset">Preset</label>
-    <select id="preset" bind:value={options.preset_name}>
-        <option value="Default">Default</option>
+    <select id="preset" bind:value={preset_name}>
+        {#each presets as preset}
+            <option value={preset}>{preset}</option>
+        {/each}
     </select>
     
     <label for="ws_url">WebSocket URL</label>
