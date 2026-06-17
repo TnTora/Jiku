@@ -103,6 +103,10 @@ class CreatorInfoRespone(BaseModel):
     name: str
 
 
+class BookProcessCancel(BaseModel):
+    id: str
+
+
 class BookLastPosUpdate(BookPosition):
     id: int
 

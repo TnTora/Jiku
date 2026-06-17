@@ -12,7 +12,7 @@ from api.schemas.books import (
     CreatorInfoRespone,
     CollectionRename,
     CollectionBookCreate,
-    BookmarkRename,
+    BookmarkRename, BookProcessCancel,
 )
 
 from api.db import get_db
@@ -318,11 +318,32 @@ def delete_collection(collection_id: int, db: Annotated[Session, Depends(get_db)
 
 active_tasks_ids = {}
 
+
+@router.put("/stop_book_processing")
+def stop_book_processing(data: BookProcessCancel):
+    if data.id in active_tasks_ids:
+        result = process_ebub.AsyncResult(data.id)
+        result.abort()
+
+
 @router.get("/tasks_events", response_class=EventSourceResponse)
 async def tasks_events():
     print("tasks_events")
     async with redis.Redis(host="localhost", port=6379, db=0, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
         await pubsub.subscribe("__keyevent@0__:set")
+
+        #If active_tasks_ids is not empty, yield temp status.
+        for task_id, filename in active_tasks_ids.items():
+            task = {
+                "status": "WAITING",
+                "result": None,
+                "traceback": None,
+                "children": None,
+                "date_done": None,
+                "task_id": task_id,
+                "name": filename,
+            }
+            yield task
 
         last_message = datetime.now(UTC)
 
@@ -348,6 +369,9 @@ async def tasks_events():
             except (TypeError, KeyError, json.JSONDecodeError):
                 continue
 
+            if task_id not in active_tasks_ids:
+                continue
+
             last_message = datetime.now(UTC)
 
             print(task, task_id, task_status, sep="\n")
@@ -355,7 +379,7 @@ async def tasks_events():
             name = active_tasks_ids.get(task_id, "Task")
             task["name"] = name
 
-            if task_status in {"FAILURE", "SUCCESS"} and task_id in active_tasks_ids:
+            if task_status in {"FAILURE", "SUCCESS", "CANCELLED"}:
                 del active_tasks_ids[task_id]
 
             yield task

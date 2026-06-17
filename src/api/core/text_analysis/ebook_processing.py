@@ -1,5 +1,4 @@
 import shutil
-from celery.contrib.abortable import AbortableTask
 import re
 from collections.abc import Iterator
 from pathlib import Path
@@ -32,6 +31,7 @@ from api.db.models.books import (
 )
 
 from api.celery_worker import celery_app
+from celery.contrib.abortable import AbortableTask
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -188,6 +188,11 @@ def process_ebub(self, source: PathLike | BinaryIO, filename: str) -> None:
             (base_path / "images" / Path(img.get_name()).name).write_bytes(img.get_content())
 
         for stylesheet in book.get_items_of_type(ebooklib.ITEM_STYLE):
+            if self.is_aborted():
+                cleanup_aborted_epub(book_id, db)
+                self.update_state(state="CANCELLED", meta={"current": -1, "total": -1})
+                return
+
             filename = Path(stylesheet.get_name()).name
             process_stylesheet(base_path / "stylesheets" / filename, stylesheet.get_content())
 
@@ -219,8 +224,10 @@ def process_ebub(self, source: PathLike | BinaryIO, filename: str) -> None:
 
             db.add(section)
 
+            print(f"{self.is_aborted() = }")
             if self.is_aborted():
                 cleanup_aborted_epub(book_id, db)
+                self.update_state(state="CANCELLED", meta={"current": -1, "total": -1})
                 return
 
             current_step += 1
@@ -228,11 +235,21 @@ def process_ebub(self, source: PathLike | BinaryIO, filename: str) -> None:
 
         store_tokens_count(book_id, stats.tokens_count, db)
 
+        if self.is_aborted():
+            cleanup_aborted_epub(book_id, db)
+            self.update_state(state="CANCELLED", meta={"current": -1, "total": -1})
+            return
+
         current_step += 1
         self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
 
         toc: list[TocItem] = []
         process_toc(book_id, documents_id_dict, book.toc, toc)
+
+        if self.is_aborted():
+            cleanup_aborted_epub(book_id, db)
+            self.update_state(state="CANCELLED", meta={"current": -1, "total": -1})
+            return
 
         processed_book.stylesheets = list(stylesheets)
         processed_book.thumb = cover
