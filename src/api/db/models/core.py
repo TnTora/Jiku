@@ -16,7 +16,7 @@ class AnkiNoteMorpheme(Base):
     __tablename__ = "ankinote_morpheme"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    note_id: Mapped[int] = mapped_column(ForeignKey("ankinotes.nid"), nullable=False)
+    note_id: Mapped[int] = mapped_column(ForeignKey("ankinotes.nid", ondelete="CASCADE"), nullable=False)
     morph_inflection: Mapped[str] = mapped_column(ForeignKey("morphemes.inflection"), nullable=False)
 
 

@@ -13,6 +13,9 @@ from datetime import datetime
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 
+from api.celery_worker import celery_app
+from celery.contrib.abortable import AbortableTask
+
 from typing import Any
 from collections.abc import Iterable
 
@@ -121,8 +124,17 @@ def update_existing_notes() -> None:
         if not stored_notes:
             return
 
+        anki_notes = set()
         curr_notes_query = f"nid:{",".join([str(note) for note in stored_notes])}"
-        anki_notes = get_notes_from_query(curr_notes_query)
+        # anki_notes = get_notes_from_query(curr_notes_query)
+
+        for params in anki_settings.to_analyze:
+            notes = get_notes(
+                    params.deck,
+                    params.note_type,
+                    extra_query=curr_notes_query
+                )
+            anki_notes.update(notes)
 
         # Delete notes no longer found in Anki
         db.execute(
@@ -131,10 +143,10 @@ def update_existing_notes() -> None:
         )
 
         # Delete corresponding rows from assosiaction table
-        db.execute(
-            delete(AnkiNoteMorpheme)
-            .where(AnkiNoteMorpheme.note_id.not_in(anki_notes))
-        )
+        # db.execute(
+        #     delete(AnkiNoteMorpheme)
+        #     .where(AnkiNoteMorpheme.note_id.not_in(anki_notes))
+        # )
 
         db.flush()
 
@@ -157,11 +169,24 @@ def update_existing_notes() -> None:
         db.commit()
 
 
-def update_morphemes_db() -> None:
+@celery_app.task(bind=True, base=AbortableTask)
+def update_morphemes_db(self) -> None:
+    self.update_state(
+        state="UPDATING NOTES",
+        meta={
+            "current_rule": -1,
+            "total_rules": -1,
+            "current_note": -1,
+            "total_notes": -1
+        }
+    )
     update_existing_notes()
     analyzer = get_analyzer()
     with SessionLocal() as db:
         existing_morphs = set(db.execute(select(Morpheme.inflection)).scalars().all())
+        total_rules = len(anki_settings.to_analyze) * 2
+        current_rule = 0
+
 
         for params in anki_settings.to_analyze:
             msg = f"Analyzing: deck={params.deck}, note_type={params.note_type}, text_field={params.text_field}"
@@ -185,8 +210,41 @@ def update_morphemes_db() -> None:
                 morphemes = set()
                 ankinote_morphemes = []
 
+                current_rule += 1
+                self.update_state(
+                    state="PROGRESS",
+                    meta={
+                        "current_rule": current_rule,
+                        "total_rules": total_rules,
+                        "current_note": 0,
+                        "total_notes": notes_count
+                    }
+                )
+
                 for i, (note, text) in enumerate(get_notes_info(notes, params.text_field)):
                     print(f"{i+1}/{notes_count}, {text}")
+                    if i % 50 == 0:
+                        if self.is_aborted():
+                            self.update_state(
+                                state="CANCELLED",
+                                meta={
+                                    "current_rule": -1,
+                                    "total_rules": -1,
+                                    "current_note": -1,
+                                    "total_notes": -1
+                                }
+                            )
+                            return
+
+                        self.update_state(
+                            state="PROGRESS",
+                            meta={
+                                "current_rule": current_rule,
+                                "total_rules": total_rules,
+                                "current_note": i,
+                                "total_notes": notes_count
+                            }
+                        )
 
                     db.add(AnkiNote(
                         nid=note,
@@ -223,6 +281,18 @@ def update_morphemes_db() -> None:
                 db.flush()
 
                 db.add_all(ankinote_morphemes)
+
+                if self.is_aborted():
+                    self.update_state(
+                        state="CANCELLED",
+                        meta={
+                            "current_rule": -1,
+                            "total_rules": -1,
+                            "current_note": -1,
+                            "total_notes": -1
+                        }
+                    )
+                    return
 
                 db.commit()
                 existing_morphs.update([morph.inflection for morph in morphemes])
