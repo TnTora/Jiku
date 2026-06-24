@@ -36,7 +36,7 @@ services:
     # build:
     #   context: .
     #   dockerfile: Dockerfile.backend
-    image: jiku-backend
+    image: tntora/jiku-backend
     command: celery -A api.celery_worker worker --loglevel=info
     environment:
       DATABASE_URL: "postgresql+psycopg://postgres:postgres@db:5432/jikudb"
@@ -63,7 +63,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    image: jiku-backend
+    image: tntora/jiku-backend
     command: fastapi run src/api/main.py --port 8000
     expose:
       - "8000"
@@ -94,6 +94,7 @@ services:
     build:
       context: ./src/frontend
       dockerfile: Dockerfile
+    image: tntora/jiku-frontend
     environment:
       PORT: 5173
       BACKEND_HOST: "backend"
