@@ -2,6 +2,7 @@ import re
 import json
 import urllib.request
 import urllib.error
+from os import getenv
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.core.config import load_settings_from_db
@@ -44,6 +45,7 @@ class AnkiError(Exception):
 
 
 anki_settings: AnkiSettings = load_settings_from_db("anki")
+ankiconnect_host = getenv("ANKICONNECT_HOST", "127.0.0.1")
 
 
 def request(action: str, **params) -> dict[str, Any]:
@@ -53,7 +55,7 @@ def request(action: str, **params) -> dict[str, Any]:
 def invoke(action: str, **params) -> Any:
     try:
         requestJson = json.dumps(request(action, **params)).encode("utf-8")
-        response = json.load(urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{anki_settings.port}", requestJson)))
+        response = json.load(urllib.request.urlopen(urllib.request.Request(f"http://{ankiconnect_host}:{anki_settings.port}", requestJson)))
         if len(response) != 2:  # noqa: PLR2004
             logger.error("AnkiConnect : response has an unexpected number of fields (%s, %s)", action, params)
             msg = f"response has an unexpected number of fields ({action = }, {params = })"

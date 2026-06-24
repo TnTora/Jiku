@@ -6,6 +6,7 @@ from api.db.models.core import Morpheme
 
 from api.schemas.core import KnownMorphemes
 from api.core.anki import get_decks, get_note_types, get_all_note_types_fields, update_morphemes_db, AnkiError
+from api.core.config.shared import redis_host
 
 from sqlalchemy import select, distinct, func
 from sqlalchemy.orm import Session
@@ -73,8 +74,8 @@ async def sync_status():
     global syncing_morphs_id
 
     print("sync_events")
-    async with redis.Redis(host="localhost", port=6379, db=0, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
-        await pubsub.subscribe("__keyevent@0__:set")
+    async with redis.Redis(host=redis_host, port=6379, db=1, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
+        await pubsub.subscribe("__keyevent@1__:set")
 
         if syncing_morphs_id:
             task = {

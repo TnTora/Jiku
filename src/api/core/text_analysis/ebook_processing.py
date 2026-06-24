@@ -17,6 +17,7 @@ from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.db.models.core import Morpheme
 
 from api.core.config import config_path
+from api.core.config.shared import static_url
 from sqlalchemy.orm import Session
 from api.db import SessionLocal
 from api.db.models.books import (
@@ -133,7 +134,7 @@ def process_ebub(self, source: PathLike | BinaryIO, filename: str) -> None:
             spine=spine,
             thumb=None,
             original_file=filename,
-            static_url="http://127.0.0.1:8000/static/books",
+            static_url=f"{static_url}/static/books",
             total_char=0,
             total_tokens=0,
         )
@@ -333,16 +334,16 @@ def process_html_content(filepath: Path, content: bytes, book_id: int, stats: Bo
 
     for img in soup.find_all("img", src=True):
         filename = Path(img["src"]).name  # ty:ignore[invalid-argument-type]
-        img["src"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
+        img["src"] = f"{static_url}/static/books/{book_id}/images/{filename}"
 
     for image in soup.find_all("image"):
         if "href" in image.attrs:
             filename = Path(image["href"]).name  # ty:ignore[invalid-argument-type]
-            image["href"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
+            image["href"] = f"{static_url}/static/books/{book_id}/images/{filename}"
         elif "xlink:href" in image.attrs:
             filename = Path(image["xlink:href"]).name  # ty:ignore[invalid-argument-type]
             del image["xlink:href"]
-            image["href"] = f"http://127.0.0.1:8000/static/books/{book_id}/images/{filename}"
+            image["href"] = f"{static_url}/static/books/{book_id}/images/{filename}"
 
 
 

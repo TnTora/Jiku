@@ -6,6 +6,8 @@ from api.core.config import config_path
 from api.db import Base, engine
 from api.routers import texthooker, books, options, anki
 
+from os import getenv
+
 ################ Logging Setup ###########################################################
 
 import logging
@@ -43,7 +45,7 @@ app.include_router(books.router, prefix="/books")
 app.include_router(options.router, prefix="/options")
 app.include_router(anki.router, prefix="/anki")
 
-origins = ["http://localhost:5173"]
+origins = [getenv("FRONTEND_ORIGIN","http://localhost:5173")]
 
 app.add_middleware(
     CORSMiddleware,

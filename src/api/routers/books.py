@@ -31,6 +31,7 @@ from api.db.models.books import (
 
 from api.core.text_analysis.ebook_processing import process_ebub
 from api.core.config import config_path, tmp_path
+from api.core.config.shared import redis_host
 
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -329,8 +330,8 @@ def stop_book_processing(data: BookProcessCancel):
 @router.get("/tasks_events", response_class=EventSourceResponse)
 async def tasks_events():
     print("tasks_events")
-    async with redis.Redis(host="localhost", port=6379, db=0, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
-        await pubsub.subscribe("__keyevent@0__:set")
+    async with redis.Redis(host=redis_host, port=6379, db=1, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
+        await pubsub.subscribe("__keyevent@1__:set")
 
         #If active_tasks_ids is not empty, yield temp status.
         for task_id, filename in active_tasks_ids.items():
@@ -391,8 +392,6 @@ async def tasks_events():
         await pubsub.unsubscribe()
         yield ServerSentEvent(event="close", data="")
         print("unsubscribed")
-
-
 
 
 
