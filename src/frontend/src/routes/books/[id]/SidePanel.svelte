@@ -16,7 +16,7 @@
         let name = text_input_popup.text_input_value;
 
         try {
-            let res = await fetch("http://127.0.0.1:8000/books/rename_bookmark/", {
+            let res = await fetch("/api_bridge/books/rename_bookmark/", {
                 method: "PUT",
                 headers: {
                     "accept": "application/json",
@@ -40,7 +40,7 @@
 
     async function deleteBookmark(bookmark_id: number) {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/books/delete_bookmark/${bookmark_id}`, {
+            const res = await fetch(`/api_bridge/books/delete_bookmark/${bookmark_id}`, {
                 method: "DELETE",
             });
         } catch (error) {

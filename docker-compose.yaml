@@ -1,0 +1,121 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jikudb
+    volumes:
+      - db_data:/var/lib/postgresql
+    expose:
+      - "5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --notify-keyspace-events E$
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.backend
+    image: jiku-backend
+    command: celery -A api.celery_worker worker --loglevel=info
+    environment:
+      DATABASE_URL: "postgresql+psycopg://postgres:postgres@db:5432/jikudb"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/1"
+      REDIS_HOST: "redis"
+      ANKICONNECT_HOST: "host.docker.internal"
+      FRONTEND_ORIGIN: "http://frontend:5173"
+      STATIC_URL: "/api_bridge"
+      CONFIG_DIR: "/data"
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - backend_data:/data
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: jiku-backend
+    command: fastapi run src/api/main.py --port 8000
+    expose:
+      - "8000"
+    # ports:
+    #   - "8000:8000"
+    environment:
+      DATABASE_URL: "postgresql+psycopg://postgres:postgres@db:5432/jikudb"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/1"
+      REDIS_HOST: "redis"
+      ANKICONNECT_HOST: "host.docker.internal"
+      FRONTEND_ORIGIN: "http://frontend:5173"
+      STATIC_URL: "/api_bridge"
+      CONFIG_DIR: "/data"
+    depends_on:
+      - db
+      - redis
+      - worker
+    volumes:
+      - backend_data:/data
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+    environment:
+      PORT: 5173
+      BACKEND_HOST: "backend"
+      BACKEND_PORT: 8000
+      ORIGIN: "http://localhost:5173"
+      BODY_SIZE_LIMIT: 52428800
+    ports:
+      - "5173:5173"
+    depends_on:
+      - db
+      - redis
+      - worker
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  redis_data:
+  backend_data:
+
+networks:
+  app-network:
+    driver: bridge

@@ -17,7 +17,7 @@
 
     async function deleteBook(book_id: number) {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/books/delete_book/${book_id}`, {
+            const res = await fetch(`/api_bridge/books/delete_book/${book_id}`, {
                 method: "DELETE",
             });
             items = items.filter( e => e.id != book_id);

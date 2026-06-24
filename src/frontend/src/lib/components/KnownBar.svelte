@@ -19,7 +19,7 @@
             progress: tmp_progress,
             status: "WAITING",
         };
-        const res = await fetch("http://127.0.0.1:8000/anki/sync_morphemes", {
+        const res = await fetch("/api_bridge/anki/sync_morphemes", {
             method: "PUT"
         });
     }

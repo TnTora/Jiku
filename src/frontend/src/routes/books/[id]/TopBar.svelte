@@ -1,5 +1,14 @@
-<script>
-    let { title, toggleOptions, toggleSidePanel, toggleJumpBox, toggleBookmarking, onBookClose} = $props();
+<script lang="ts">
+    import { browser } from "$app/environment";
+
+    let { title, toggleOptions, toggleSidePanel, toggleJumpBox, toggleBookmarking} = $props();
+
+    let stored_search_params: string = "";
+
+    if (browser) {
+        stored_search_params = sessionStorage.getItem("books_params")?? "";
+    }
+
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 </script>
 
@@ -10,11 +19,11 @@
                 <path fill="currentColor" d="M4 17q-.425 0-.712-.288T3 16t.288-.712T4 15h12q.425 0 .713.288T17 16t-.288.713T16 17zm0-4q-.425 0-.712-.288T3 12t.288-.712T4 11h12q.425 0 .713.288T17 12t-.288.713T16 13zm0-4q-.425 0-.712-.288T3 8t.288-.712T4 7h12q.425 0 .713.288T17 8t-.288.713T16 9zm16 8q-.425 0-.712-.288T19 16t.288-.712T20 15t.713.288T21 16t-.288.713T20 17m0-4q-.425 0-.712-.288T19 12t.288-.712T20 11t.713.288T21 12t-.288.713T20 13m0-4q-.425 0-.712-.288T19 8t.288-.712T20 7t.713.288T21 8t-.288.713T20 9" />
             </svg>
         </button>
-        <button class="{btn_shared_classes}" title="Close" onclick={onBookClose}>
+        <a class="{btn_shared_classes}" title="Close" href={stored_search_params? `/books?${stored_search_params}`: "/books"}>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5" viewBox="0 0 15 15">
                 <path fill="currentColor" d="M3.64 2.27L7.5 6.13l3.84-3.84A.92.92 0 0 1 12 2a1 1 0 0 1 1 1a.9.9 0 0 1-.27.66L8.84 7.5l3.89 3.89A.9.9 0 0 1 13 12a1 1 0 0 1-1 1a.92.92 0 0 1-.69-.27L7.5 8.87l-3.85 3.85A.92.92 0 0 1 3 13a1 1 0 0 1-1-1a.9.9 0 0 1 .27-.66L6.16 7.5L2.27 3.61A.9.9 0 0 1 2 3a1 1 0 0 1 1-1c.24.003.47.1.64.27" />
             </svg>
-        </button>
+        </a>
     </div>
 
     <div class="text-xs text-neutral-500 bg-neutral-800/95 px-2 py-1 rounded-full z-10">{title}</div>

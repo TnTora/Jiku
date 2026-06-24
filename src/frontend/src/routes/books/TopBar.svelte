@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { enhance } from "$app/forms";
     import { getTasksContext } from "$lib/utils/taskEventSource.svelte";
 
     let task_context = getTasksContext();
+    let formElement: HTMLFormElement;
 
     console.log(task_context);
 
@@ -18,7 +20,7 @@
             console.log(file.name);
             const formData = new FormData();
             formData.append("file", file, file.name);
-            await fetch(`http://127.0.0.1:8000/books/add_book`, {
+            await fetch(`/api_bridge/books/add_book`, {
                 method: "POST",
                 body: formData,
             })
@@ -52,9 +54,11 @@
                     <path d="M19.5 18s-1 .763-1 2s1 2 1 2M9 10s2.21-3 3-3s3 3 3 3m-3-2.5V13" />
                 </g>
             </svg>
-            <input type="file" multiple accept=".epub" title="Upload" style="display: none;"
-                oninput={handleFilesInput}
-            >
+            <form bind:this={formElement} use:enhance method="POST">
+                <input type="file" multiple accept=".epub" title="Upload" style="display: none;"
+                    oninput={handleFilesInput}
+                >
+            </form>
         </label>
     </div>
 </div>

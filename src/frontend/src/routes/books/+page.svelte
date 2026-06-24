@@ -15,7 +15,23 @@
     import { addBookToCollection } from "./requests.js";
 
     import type { SelectCollectionPopupContext } from "./context.js";
+	import { browser } from "$app/environment";
 
+
+    let stored_params: string = "";
+
+    if (browser) {
+        stored_params = sessionStorage.getItem("books_params")?? "";
+    }
+
+    if (stored_params && (page.url.searchParams.toString() != stored_params) ) {
+        goto(`?${stored_params}`);
+    }
+
+    $effect(() => {
+        console.log(page.url.searchParams);
+        sessionStorage.setItem("books_params", page.url.searchParams.toString());
+    });
 
     const errors = getJikuErrorsContext();
     const confirmation_popup = getConfirmationPopupContext();
@@ -54,7 +70,7 @@
         for (const book of selected) {
 
             try {
-                const res = await fetch(`http://127.0.0.1:8000/books/delete_book/${book.id}`, {
+                const res = await fetch(`/api_bridge/books/delete_book/${book.id}`, {
                     method: "DELETE",
                 });
             } catch (error) {

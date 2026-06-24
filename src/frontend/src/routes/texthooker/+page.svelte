@@ -100,7 +100,7 @@
 
     async function processNewLine(new_line: string) {
         try {
-            const res = await fetch("http://127.0.0.1:8000/texthooker/new_line", {
+            const res = await fetch("/api_bridge/texthooker/new_line", {
                 method: "POST",
                 headers: {
                     "accept": "application/json",
@@ -126,7 +126,7 @@
 
     async function deleteLine(line_id: number) {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/texthooker/line/${line_id}`, {
+            const res = await fetch(`/api_bridge/texthooker/line/${line_id}`, {
                 method: "DELETE",
             });
         } catch (error) {
@@ -142,7 +142,7 @@
 
     async function clearAllLines(line_id: number) {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/texthooker/clear_lines`, {
+            const res = await fetch(`/api_bridge/texthooker/clear_lines`, {
                 method: "DELETE",
             });
         } catch (error) {

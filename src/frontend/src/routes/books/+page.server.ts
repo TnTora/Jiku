@@ -1,9 +1,10 @@
-export const load = async ({ url }) => {
-    let res = await fetch(`http://127.0.0.1:8000/books/books_info/?${url.searchParams.toString()}`);
-	let books = await res.json();
-    res = await fetch(`http://127.0.0.1:8000/books/collections`);
+export const load = async ({ url, fetch }) => {
+    let res = await fetch(`/api_bridge/books/books_info?${url.searchParams.toString()}`);
+	console.log(res);
+    let books = await res.json();
+    res = await fetch(`/api_bridge/books/collections`);
 	let collections = await res.json();
-    res = await fetch(`http://127.0.0.1:8000/books/creators`);
+    res = await fetch(`/api_bridge/books/creators`);
 	let creators = await res.json();
     console.log(books, collections, creators);
 	return {books, collections, creators};

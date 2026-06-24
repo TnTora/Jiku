@@ -35,9 +35,9 @@
 	// let test_errors = [{short: "test1", details:"test message 1"}, {short: "test2", details:"test message 2"}];
 	let errors = $state([]);
 	setJikuErrorsContext(errors);
-	const task_context = setTasksContext("http://127.0.0.1:8000/books/tasks_events");
+	const task_context = setTasksContext("/api_bridge/books/tasks_events");
 
-	const sync_task_context = setSyncTaskContext("http://127.0.0.1:8000/anki/sync_status");
+	const sync_task_context = setSyncTaskContext("/api_bridge/anki/sync_status");
 
 
 	let confirmation_popup: ConfirmationPopupContext = $state({
@@ -85,7 +85,7 @@
 
 	async function stopSync() {
 		sync_task_context.sync_task = null;
-		const res = await fetch("http://127.0.0.1:8000/anki/stop_morphemes_sync", {
+		const res = await fetch("/api_bridge/anki/stop_morphemes_sync", {
 			method: "PUT"
 		});
 	}

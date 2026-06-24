@@ -22,9 +22,13 @@ def load_settings_from_db(name: OptionSectionName) -> OptionSection:
         raise ValueError(msg)
 
     with SessionLocal() as db:
-        result = db.execute(
-            select(Option.value).where(Option.name == name)
-        )
+        try:
+            result = db.execute(
+                select(Option.value).where(Option.name == name)
+            )
+        except Exception:
+            return option_type[name]()
+
         settings_json_str = result.scalar()
 
         if not settings_json_str:

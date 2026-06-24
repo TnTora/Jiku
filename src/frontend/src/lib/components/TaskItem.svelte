@@ -17,7 +17,7 @@
             return;
         }
 
-        const res = await fetch("http://127.0.0.1:8000/books/stop_book_processing", {
+        const res = await fetch("/api_bridge/books/stop_book_processing", {
             method:"PUT",
             headers: {
                 "accept": "application/json",

@@ -29,7 +29,7 @@
         let name = text_input_popup.text_input_value;
 
         try {
-            let res = await fetch("http://127.0.0.1:8000/books/add_collection/", {
+            let res = await fetch("/api_bridge/books/add_collection/", {
                 method: "POST",
                 headers: {
                     "accept": "application/json",
@@ -60,7 +60,7 @@
         let name = text_input_popup.text_input_value;
 
         try {
-            let res = await fetch("http://127.0.0.1:8000/books/rename_collection/", {
+            let res = await fetch("/api_bridge/books/rename_collection/", {
                 method: "PUT",
                 headers: {
                     "accept": "application/json",
@@ -84,7 +84,7 @@
 
     async function deleteCollection(collection_id: number) {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/books/delete_collection/${collection_id}`, {
+            const res = await fetch(`/api_bridge/books/delete_collection/${collection_id}`, {
                 method: "DELETE",
             });
         } catch (error) {

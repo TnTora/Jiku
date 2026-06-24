@@ -90,7 +90,7 @@
 
     async function loadAnkiData() {
         try {
-            const res = await fetch("http://127.0.0.1:8000/anki/anki_decks_info");
+            const res = await fetch("/api_bridge/anki/anki_decks_info");
             const anki_info = await res.json();
 
             anki_decks = anki_info.decks;
@@ -125,7 +125,7 @@
         }
 
         try {
-            const res = await fetch("http://127.0.0.1:8000/options/anki_settings",{
+            const res = await fetch("/api_bridge/options/anki_settings",{
                 method: "PUT",
                 headers: {
                     "accept": "application/json",

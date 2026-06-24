@@ -135,7 +135,7 @@
 
 
     async function loadSectionContent(name:string) {
-        const res = await fetch(`http://127.0.0.1:8000/books/id/${book.id}/${name}`);
+        const res = await fetch(`/api_bridge/books/id/${book.id}/${name}`);
         curr_section = name;
 	    content = await res.json();
     }
@@ -351,7 +351,7 @@
         let new_bookmark;
 
         try {
-            const res = await fetch("http://127.0.0.1:8000/books/add_bookmark", {
+            const res = await fetch("/api_bridge/books/add_bookmark", {
                 method: "POST",
                 headers: {
                     "accept": "application/json",
@@ -451,7 +451,7 @@
         if (page_first_token_span) {
             let tok_position = page_first_token_span.getAttribute("data-tok");
             try {
-                const res = await fetch("http://127.0.0.1:8000/books/update_last_pos", {
+                const res = await fetch("/api_bridge/books/update_last_pos", {
                     method: "PUT",
                     headers: {
                         "accept": "application/json",
@@ -518,9 +518,9 @@
 ></svelte:window>
 
 <svelte:head>
-    <!-- <link rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/shared/morph_status.css"> -->
+    <!-- <link rel="stylesheet" type="text/css" href="/api_bridge/static/shared/morph_status.css"> -->
     {#each book.stylesheets as sheet_file, i}
-        <link bind:this={stylesheets_elements[i]} rel="stylesheet" type="text/css" href="http://127.0.0.1:8000/static/books/{book.id}/stylesheets/{sheet_file}" data-file="{sheet_file}" disabled>
+        <link bind:this={stylesheets_elements[i]} rel="stylesheet" type="text/css" href="/api_bridge/static/books/{book.id}/stylesheets/{sheet_file}" data-file="{sheet_file}" disabled>
     {/each}
 </svelte:head>
 
@@ -531,7 +531,7 @@
             toggleSidePanel={() => {show_side_panel = !show_side_panel}}
             toggleJumpBox={() => {show_jump_to = !show_jump_to}}
             toggleBookmarking={startBookmarking}
-            onBookClose={() => { goto("/books") }}/>
+    />
 
     <div class="flex-1 h-(--reader-height) relative" style="--reader-height: calc(100vh - 3rem);">
 
