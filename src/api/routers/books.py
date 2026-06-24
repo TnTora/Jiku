@@ -12,7 +12,9 @@ from api.schemas.books import (
     CreatorInfoRespone,
     CollectionRename,
     CollectionBookCreate,
-    BookmarkRename, BookProcessCancel,
+    BookmarkRename,
+    BookProcessCancel,
+    BookLastOpenUpdate,
 )
 
 from api.db import get_db
@@ -111,6 +113,20 @@ def update_last_pos(pos_update: BookLastPosUpdate, db: Annotated[Session, Depend
         last_pos.section = pos_update.section
         last_pos.tok_pos = pos_update.tok_pos
         last_pos.ch_pos = pos_update.ch_pos
+
+    db.commit()
+
+
+@router.put(
+    "/update_last_opened",
+    status_code=status.HTTP_202_ACCEPTED)
+def update_last_opened(data: BookLastOpenUpdate, db: Annotated[Session, Depends(get_db)]):
+    book = db.execute(select(Book).where(Book.id == data.id)).scalar()
+
+    if book is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+
+    book.last_opened = datetime.now(UTC)
 
     db.commit()
 

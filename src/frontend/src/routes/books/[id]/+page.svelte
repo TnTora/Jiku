@@ -494,6 +494,21 @@
     }
 
 
+    async function update_last_open() {
+        console.log(`updating: ${book.id}`);
+        await fetch(`/api_bridge/books/update_last_opened`, {
+            method: "PUT",
+            headers: {
+                "accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                id: book.id
+            })
+        })
+    }
+
+
     let status_style: HTMLStyleElement;
 
     onMount(() => {
@@ -508,6 +523,7 @@
 
         status_style = createStatusStyle();
         // console.log("sheet", status_style.sheet);
+        update_last_open();
 
         return handleClose;
     });

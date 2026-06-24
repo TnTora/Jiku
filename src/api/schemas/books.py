@@ -111,6 +111,10 @@ class BookLastPosUpdate(BookPosition):
     id: int
 
 
+class BookLastOpenUpdate(BaseModel):
+    id: int
+
+
 class CollectionBookCreate(BaseModel):
     book_id: int
     collection_id: int
