@@ -69,7 +69,12 @@ def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
     llts = []
 
     for i, tok in enumerate(analyzer.parse(correct_line_whitespace(line.text), line_model=True)):
-        tokens.append(tok)
+        tokens.append({
+            "lemma": tok.lemma,
+            "inflection": tok.inflection,
+            "pos": tok.pos,
+            "tag": tok.tag,
+        })
 
         llts.append({
             "line_id":new_line.id,
@@ -78,16 +83,21 @@ def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
         })
 
     db.execute(
+        insert(LineToken).on_conflict_do_nothing(),
+        tokens,
+    )
+    db.flush()
+
+    db.execute(
         insert(LineLineToken).on_conflict_do_nothing(),
         llts,
     )
 
-    db.add_all(tokens)
     db.commit()
 
     status_result = db.execute(
         select(LineToken.lemma, func.max(AnkiNote.status))
-        .join(AnkiNoteMorpheme, (LineToken.inflection == AnkiNoteMorpheme.morph_inflection) & (LineToken.inflection.in_({tok.inflection for tok in tokens})))
+        .join(AnkiNoteMorpheme, (LineToken.inflection == AnkiNoteMorpheme.morph_inflection) & (LineToken.inflection.in_({tok["inflection"] for tok in tokens})))
         .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
         .group_by(LineToken.lemma)
     )
