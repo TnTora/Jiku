@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.pool import NullPool
 
 import os
 
@@ -14,6 +15,7 @@ if DATABASE_URL is None:
 
 engine = create_engine(
     DATABASE_URL,
+    poolclass=NullPool,
     # echo=True,
 )
 
