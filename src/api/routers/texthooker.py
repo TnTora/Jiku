@@ -1,11 +1,11 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
-from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse
+from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse, PresetRename
 
 from api.db import get_db
 
-from sqlalchemy import select, delete, distinct, func
+from sqlalchemy import select, delete, distinct, func, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from api.db.models.texthooker import Line, LineLineToken, LineToken
@@ -30,17 +30,16 @@ def correct_line_whitespace(line: str) -> str:
 #-------------------------------------------------------------------------------
 
 @router.get("/last_session", response_model=LastSessionResponse)
-def last_session(db: Annotated[Session, Depends(get_db)]):
+def last_session(
+    db: Annotated[Session, Depends(get_db)],
+    preset: str | None,
+):
+    preset = preset or "Default"
     lines = db.execute(
-        select(Line).order_by(Line.date_added)
+        select(Line).where(Line.preset == preset).order_by(Line.date_added)
     ).scalars().all()
 
-    # status_result = db.execute(
-    #     select(LineToken.lemma, func.max(AnkiNote.status))
-    #     .join(AnkiNoteMorpheme, LineToken.inflection == AnkiNoteMorpheme.morph_inflection)
-    #     .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
-    #     .group_by(LineToken.lemma)
-    # )
+    #TODO: Add filter for preset name
     status_result = db.execute(
         select(Morpheme.lemma, func.max(AnkiNote.status))
         .join(AnkiNoteMorpheme, Morpheme.inflection == AnkiNoteMorpheme.morph_inflection)
@@ -59,7 +58,7 @@ def last_session(db: Annotated[Session, Depends(get_db)]):
     status_code=status.HTTP_201_CREATED
 )
 def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
-    new_line = Line(text=line.text)
+    new_line = Line(text=line.text, preset=line.preset)
     db.add(new_line)
     db.flush()
     db.refresh(new_line)
@@ -68,7 +67,7 @@ def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
     tokens = []
     llts = []
 
-    for i, tok in enumerate(analyzer.parse(correct_line_whitespace(line.text), line_model=True)):
+    for i, tok in enumerate(analyzer.parse(correct_line_whitespace(line.text), line_model=True, pos_exclude={"SPACE", "PUNCT", "SYM", "X"})):
         tokens.append({
             "lemma": tok.lemma,
             "inflection": tok.inflection,
@@ -124,12 +123,28 @@ def delete_line(id: int, db: Annotated[Session, Depends(get_db)]):
     db.commit()
 
 
-@router.delete("/clear_lines")
-def clear_lines(db: Annotated[Session, Depends(get_db)]):
-    db.execute(delete(Line))
-    db.execute(delete(LineToken))
-    db.execute(delete(LineLineToken))
+@router.delete("/clear_lines/{preset}")
+def clear_lines(preset:str, db: Annotated[Session, Depends(get_db)]):
+    db.execute(
+        delete(Line)
+        .where(Line.preset == preset)
+    )
+    db.flush()
+    db.execute(
+        delete(LineToken)
+        .where(LineToken.inflection.not_in(select(LineLineToken.token_inflection)))
+    )
+    # db.execute(delete(LineLineToken))
     db.commit()
 
+
+@router.put("/rename_preset")
+def rename_preset(data: PresetRename, db:Annotated[Session, Depends(get_db)]):
+    db.execute(
+        update(Line)
+        .where(Line.preset == data.old_name)
+        .values(preset=data.new_name)
+    )
+    db.commit()
 
 #TODO: @router.put("/update_line") or patch

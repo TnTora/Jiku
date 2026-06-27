@@ -13,6 +13,7 @@ class LineBase(BaseModel):
 
 class LineCreate(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
+    preset: str | None = Field(min_length=1, max_length=100)
 
 class LineResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -29,3 +30,7 @@ class LastSessionResponse(BaseModel):
     lines: list[LineBase]
     status_map: dict[str, KnownStatus]
 
+
+class PresetRename(BaseModel):
+    old_name: str = Field(min_length=1, max_length=100)
+    new_name: str = Field(min_length=1, max_length=100)

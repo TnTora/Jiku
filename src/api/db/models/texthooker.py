@@ -13,7 +13,7 @@ class LineLineToken(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     order_ref: Mapped[int] = mapped_column(Integer, nullable=False)
-    line_id: Mapped[int] = mapped_column(ForeignKey("lines.id"), nullable=False)
+    line_id: Mapped[int] = mapped_column(ForeignKey("lines.id", ondelete="CASCADE"), nullable=False)
     token_inflection: Mapped[str] = mapped_column(ForeignKey("linetokens.inflection"), nullable=False)
 
     line: Mapped[Line] = relationship(back_populates="tokens_association")
@@ -24,6 +24,7 @@ class Line(Base):
     __tablename__ = "lines"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    preset: Mapped[str] = mapped_column(String, nullable=False, default="Default")
     text: Mapped[str] = mapped_column(Text, nullable=False)
     date_added: Mapped[datetime] = mapped_column(
         DateTime,

@@ -6,17 +6,18 @@
     import TexthookerLine from "$lib/components/TexthookerLine.svelte";
     import TopBar from "./TopBar.svelte";
     import OptionPanel from "./OptionPanel.svelte";
-	import { goto } from "$app/navigation";
+	import { goto, invalidateAll } from "$app/navigation";
 
     let { data } = $props();
-    let lines = $state(data.lines);
-    let status_map = $state(data.status_map);
+    let lines = $derived(data.lines);
+    let status_map = $derived(data.status_map);
     let new_lines: any[] = $state([]);
     let ws: WebSocket | null = null;
     let ws_connected = $state(false);
 
 
     let preset_name: string = page.url.searchParams.get("preset")?? "";
+    // svelte-ignore non_reactive_update
     let presets = [];
 
     if (browser) {
@@ -41,6 +42,7 @@
                 return {
                     websocket_url: "ws://localhost:6677",
                     font_size: 22,
+                    line_height: 1.75,
                     vertical: false,
                 }
             }
@@ -106,7 +108,10 @@
                     "accept": "application/json",
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({text: new_line})
+                body: JSON.stringify({
+                    text: new_line,
+                    preset: preset_name,
+                })
             });
 
             let { id, tokens, line_status_map } = await res.json();
@@ -140,9 +145,9 @@
 
     }
 
-    async function clearAllLines(line_id: number) {
+    async function clearAllLines() {
         try {
-            const res = await fetch(`/api_bridge/texthooker/clear_lines`, {
+            const res = await fetch(`/api_bridge/texthooker/clear_lines/${preset_name}`, {
                 method: "DELETE",
             });
         } catch (error) {
@@ -153,6 +158,8 @@
             });
             throw error;
         }
+        invalidateAll();
+        new_lines = [];
 
     }
 
@@ -178,10 +185,12 @@
             ws = new WebSocket(options.websocket_url);
 
             ws.addEventListener('open', () => {
+                console.log("websocket opened");
                 ws_connected = true;
             });
 
             ws.addEventListener('close', () => {
+                console.log("websocket closed");
                 ws_connected = false;
             });
 
@@ -215,7 +224,14 @@
 
 <div class="fixed bottom-1 left-[50%] -translate-x-[50%] z-9 flex items-center justify-between gap-4 text-xs text-neutral-500 bg-neutral-800 px-2 rounded-full">
     <label for="preset">Preset:</label>
-    <select id="preset" bind:value={options.preset_name}>
+    <select id="preset" bind:value={preset_name}
+        onchange={(event) => {
+            const new_preset = (event.target as HTMLSelectElement).value;
+            window.location.href = `?preset=${new_preset}`;
+            // goto(`?preset=${new_preset}`);
+            // options = loadOptions(new_preset);
+        }}
+    >
         {#each presets as preset}
             <option value={preset}>{preset}</option>
         {/each}
@@ -223,10 +239,12 @@
 </div>
 
 
-<div bind:this={text_container} class="relative pt-10 pb-6 w-full h-screen overflow-scroll {options.vertical? "vert-rl pl-5 pr-2": ""}">
+<div bind:this={text_container} class="relative pt-10 pb-6 w-full h-screen overflow-scroll {options.vertical? "vert-rl pl-5 pr-2": ""}"
+    style="line-height: {options.line_height}"
+>
     <!-- last session lines -->
     {#each lines as line}
-        <TexthookerLine {line} {status_map}
+        <TexthookerLine {line} status_map={status_map}
             delete_func={() => {
                 lines = lines.filter( e => e.id !== line.id);
                 deleteLine(line.id);
@@ -241,7 +259,7 @@
             class="my-1 py-1 px-5 whitespace-pre-wrap"
             style="font-size: {options.font_size}px;">{line.raw}</p>
         {:then line} 
-            <TexthookerLine {line} {status_map} 
+            <TexthookerLine {line} status_map={status_map}
                 delete_func={ () => { 
                     new_lines = new_lines.filter( e => e.id !== line.id );
                     deleteLine(line.id);

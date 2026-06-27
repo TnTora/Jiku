@@ -2,6 +2,7 @@
     import { getTextHookerOptionsContext } from "./context";
     import { clickOutside } from "$lib/utils/clickOutside.js";
     import SelectOption from "$lib/components/SelectOption.svelte";
+	import { goto } from "$app/navigation";
     let { onoutsideclick, presets, preset_name = $bindable() } = $props();
     let options = getTextHookerOptionsContext();
 </script>
@@ -11,7 +12,12 @@
     <h2 class="col-span-2 text-xl font-bold mt-4" style="margin-top:0;">Main</h2>
     
     <label for="preset">Preset</label>
-    <select id="preset" bind:value={preset_name}>
+    <select id="preset" bind:value={preset_name}
+        onchange={(event) => {
+            const new_preset = (event.target as HTMLSelectElement).value;
+            window.location.href = `?preset=${new_preset}`;
+        }}
+    >
         {#each presets as preset}
             <option value={preset}>{preset}</option>
         {/each}
@@ -36,6 +42,13 @@
         <button onclick={() => { options.font_size-- }} class="w-7 h-7 pl-1 text-[0.7rem] rounded-l-full cursor-pointer bg-neutral-700 active:bg-neutral-600">A</button>
         <input id="font_size" type="number" bind:value={options.font_size} class="w-9 h-7 text-sm text-center hide-input-spinners z-10">
         <button onclick={() => { options.font_size++ }} class="w-7 h-7 pr-1 text-[1rem] rounded-r-full cursor-pointer bg-neutral-700 active:bg-neutral-600">A</button>
+    </div>
+
+    <label for="line_height">Line Height</label>
+    <div class="flex items-center mx-auto border border-neutral-600 bg-neutral-600 rounded-full">
+        <button onclick={() => { options.line_height -= 0.25 }} class="w-7 h-7 pl-1 rounded-l-full cursor-pointer bg-neutral-700 active:bg-neutral-600">-</button>
+        <input id="line_height" type="number" bind:value={options.line_height} class="w-9 h-7 text-sm text-center hide-input-spinners z-10">
+        <button onclick={() => { options.line_height += 0.25 }} class="w-7 h-7 pr-1 rounded-r-full cursor-pointer bg-neutral-700 active:bg-neutral-600">+</button>
     </div>
     
 </div>

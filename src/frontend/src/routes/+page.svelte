@@ -2,9 +2,13 @@
     import { browser } from "$app/environment";
     import KnownBar from "$lib/components/KnownBar.svelte";
     import BookCarousel from "$lib/components/BookCarousel.svelte";
+	import { getJikuErrorsContext, getTextInputPopupContext } from "$lib/utils/context.js";
 
     let { data } = $props();
     let btn_shared = "bg-neutral-700 hover:bg-neutral-900 active:bg-neutral-950 cursor-pointer";
+
+    let text_input_popup = getTextInputPopupContext();
+    let errors = getJikuErrorsContext();
 
     interface PresetInfo {
         name: string,
@@ -55,10 +59,22 @@
         let preset_name = (document.querySelector("input[name='preset-name']") as HTMLInputElement)?.value;
         let preset_ws = (document.querySelector("input[name='preset-ws']") as HTMLInputElement)?.value;
         
-        if (!(preset_name && preset_ws)) {
-            alert("name or WS not set.")
+        if (!preset_name || presets.includes(preset_name)) {
+            errors.push({
+                short: "Invalid name",
+                details: "name empty or already used"
+            })
             return;
         }
+
+        if (!preset_ws) {
+            errors.push({
+                short: "WS not set",
+            })
+            return;
+        }
+
+
 
         presets.push(preset_name);
 
@@ -75,17 +91,76 @@
         });
     }
 
-    function deletePreset(name: string) {
+    async function deletePreset(name: string) {
         if (!presets.includes(name)) { return; }
 
-        if (presets.length == 1) {
-            alert("Cannot delete last preset.")
-            return;
+        try {
+            const res = await fetch(`/api_bridge/texthooker/clear_lines/${name}`, {
+                method: "DELETE",
+            });
+        } catch (error) {
+            console.error("Error clearing lines: ", error);
+            errors.push({
+                short: "Error clearing lines",
+                details: error,
+            });
+            throw error;
         }
 
         presets = presets.filter(item => item != name);
         presets_name_ws = presets_name_ws.filter(item => item.name != name);
         localStorage.removeItem(`texthooker_preset_${name}`);
+    }
+
+    async function renamePreset(old_name:string) {
+        let new_name = text_input_popup.text_input_value;
+
+        if (!new_name || presets.includes(new_name)) {
+            errors.push({
+                short: "Invalid name",
+                details: "name empty or already used"
+            })
+            return;
+        }
+
+        try {
+            let res = await fetch("/api_bridge/texthooker/rename_preset/", {
+                method: "PUT",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    old_name: old_name,
+                    new_name: new_name,
+                })
+            });
+        } catch (error) {
+            console.error("Failed to rename preset", error);
+            errors.push({
+                short: "Failed to rename preset",
+                details: error,
+            });
+            throw error;
+        }
+
+        for (let i=0; i < presets.length; i++) {
+            if (presets[i] == old_name) {
+                presets[i] = new_name;
+                break;
+            }
+        }
+
+        const stored = localStorage.getItem(`texthooker_preset_${old_name}`);
+        if (!stored) { return; }
+        localStorage.setItem(`texthooker_preset_${new_name}`, stored);
+        localStorage.removeItem(`texthooker_preset_${old_name}`);
+
+        presets_name_ws.forEach((item: PresetInfo) => {
+            if (item.name == old_name) {
+                item.name = new_name;
+            }
+        })
     }
 
     async function loadAnkiData() {
@@ -160,7 +235,13 @@
             <a href="/books" class="text-nowrap">Show All Books</a>
         </div>
 
-        <BookCarousel books={data.books}/>
+        {#if (data.books.size > 0)}
+            <BookCarousel books={data.books}/>
+        {:else}
+            <div class="w-[calc(100%-1rem)] p-3 bg-neutral-700 rounded-md flex items-center justify-center">
+                No Book Found
+            </div>
+        {/if}
 
         <h1>TextHooker</h1>
 
@@ -169,7 +250,37 @@
             {#each presets_name_ws as preset_info}
                 <li class="flex justify-between">
                     <a href={`/texthooker?preset=${preset_info.name}`}>{preset_info.name}: <span class="text-neutral-400">[ {preset_info.ws_url} ]</span></a>
-                    {@render delete_button(() => {deletePreset(preset_info.name)})}
+                    {#if (preset_info.name != "Default")}
+                        <div class="flex gap-1">
+                            <button title="Rename"
+                                class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                                onclick={(e) => {
+                                    e.stopPropagation();
+
+                                    text_input_popup.onOk = async () => {
+                                        if (!text_input_popup.text_input_value) { return; }
+
+                                        try {
+                                            await renamePreset(preset_info.name);
+                                            // preset_info.name = text_input_popup.text_input_value;
+                                        } catch (error) {
+                                            console.error(error);
+                                        }
+
+                                    }
+                                    text_input_popup.text = `Rename bookmark '${preset_info.name}' to:`;
+                                    text_input_popup.text_input_default = preset_info.name;
+                                    text_input_popup.show = true;
+                                }}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+                                    <path fill="currentColor" d="M14.5 2a.48.48 0 0 1 .352.148A.48.48 0 0 1 15 2.5a.48.48 0 0 1-.148.352A.48.48 0 0 1 14.5 3H13v14h1.5a.48.48 0 0 1 .352.148a.48.48 0 0 1 .148.352a.48.48 0 0 1-.148.352a.48.48 0 0 1-.352.148h-4a.48.48 0 0 1-.352-.148A.48.48 0 0 1 10 17.5a.48.48 0 0 1 .148-.352A.48.48 0 0 1 10.5 17H12V3h-1.5a.48.48 0 0 1-.352-.148A.48.48 0 0 1 10 2.5a.48.48 0 0 1 .148-.352A.48.48 0 0 1 10.5 2zM11 5H5q-.414 0-.773.156a2.1 2.1 0 0 0-.641.43a1.9 1.9 0 0 0-.43.633Q3.008 6.579 3 7v6q0 .414.156.773q.157.36.43.641t.633.43T5 15h6v1H5q-.625 0-1.164-.234a3.1 3.1 0 0 1-.953-.641A2.95 2.95 0 0 1 2 13V7q0-.617.234-1.164a3 3 0 0 1 .641-.953q.406-.406.953-.649Q4.375 3.992 5 4h6zm4-1q.618 0 1.164.234a3 3 0 0 1 1.602 1.602Q18.008 6.39 18 7v6q0 .625-.234 1.164q-.235.54-.641.953q-.406.414-.96.649A3 3 0 0 1 15 16h-1v-1h1q.414 0 .773-.156a2.1 2.1 0 0 0 .641-.43a1.9 1.9 0 0 0 .43-.633q.148-.36.156-.781V7a1.9 1.9 0 0 0-.156-.773a2.1 2.1 0 0 0-.43-.641a1.9 1.9 0 0 0-.633-.43Q15.421 5.008 15 5h-1V4zM7.5 6a.5.5 0 0 1 .454.292l2.75 6a.5.5 0 1 1-.908.416l-.784-1.71L9 11H6l-.013-.002l-.783 1.71a.5.5 0 1 1-.908-.416l2.75-6l.034-.063A.5.5 0 0 1 7.5 6m-1.055 4h2.11L7.5 7.698z" />
+                                </svg>
+                            </button>
+                            
+                            {@render delete_button(() => {deletePreset(preset_info.name)})}
+                        </div>
+                    {/if}
                 </li>
             {/each}
 
@@ -306,6 +417,7 @@
     }
 
     th {
+        min-width: 32%;
         padding-inline: 0.25rem;
         padding-block: 0.25rem;
     }

@@ -1,12 +1,13 @@
 <script lang="ts">
     import { clickOutside } from "$lib/utils/clickOutside";
     import { fly } from "svelte/transition";
-    import { getTextInputPopupContext, getConfirmationPopupContext } from "$lib/utils/context";
+    import { getTextInputPopupContext, getConfirmationPopupContext, getJikuErrorsContext } from "$lib/utils/context";
 
     let { book, onoutsideclick, updatePosition } = $props();
 
     let confirmation_popup = getConfirmationPopupContext();
     let text_input_popup = getTextInputPopupContext();
+    let errors = getJikuErrorsContext();
 
     let tab: "toc" | "spine" | "bookmarks" = $state("toc");
     let editing: boolean = $state(false);
@@ -123,7 +124,7 @@
                                         await renameBookmark(entry.id)
                                         entry.name = text_input_popup.text_input_value;
                                     } catch (error) {
-                                        console.error(error.message);
+                                        console.error(error);
                                     }
 
                                 }
