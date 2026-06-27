@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, status, Depends, HTTPException
 
 from api.core.config import load_settings_from_db
@@ -35,11 +36,15 @@ def update_anki_settings(new_settings: AnkiSettings, db: Annotated[Session, Depe
             )
         )
     else:
+        old_settings = AnkiSettings.model_validate(json.loads(settings.value))
+        for new_params in new_settings.to_analyze:
+            for old_params in old_settings.to_analyze:
+                if(old_params.deck != new_params.deck or old_params.note_type != new_params.note_type):
+                    continue
+                if(old_params.text_field != new_params.text_field or old_params.skip_brackets != new_params.skip_brackets):
+                    new_settings.to_update.add((new_params.deck, new_params.note_type))
+                    break
         settings.value = new_settings.model_dump_json()
 
     db.commit()
-
-    # update anki_settings variable used in most backend operations
-    anki_settings.port = new_settings.port
-    anki_settings.to_analyze = new_settings.to_analyze
 

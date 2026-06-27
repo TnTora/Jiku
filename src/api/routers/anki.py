@@ -56,10 +56,14 @@ syncing_morphs_id = None
 @router.put("/sync_morphemes")
 def sync_morphemes():
     global syncing_morphs_id
-    if syncing_morphs_id is None:
-        result = update_morphemes_db.delay()
-        syncing_morphs_id = result.id
-        print(f"{syncing_morphs_id = }")
+
+    if syncing_morphs_id is not None:
+        result = update_morphemes_db.AsyncResult(syncing_morphs_id)
+        result.abort()
+
+    result = update_morphemes_db.delay()
+    syncing_morphs_id = result.id
+    print(f"{syncing_morphs_id = }")
 
 
 @router.put("/stop_morphemes_sync")

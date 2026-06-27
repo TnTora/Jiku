@@ -67,7 +67,7 @@ def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
     tokens = []
     llts = []
 
-    for i, tok in enumerate(analyzer.parse(correct_line_whitespace(line.text), line_model=True, pos_exclude={"SPACE", "PUNCT", "SYM", "X"})):
+    for i, tok in enumerate(analyzer.parse(correct_line_whitespace(line.text), pos_exclude={"SPACE", "PUNCT", "SYM", "X"}, line_model=True, skip_brackets=False)):
         tokens.append({
             "lemma": tok.lemma,
             "inflection": tok.inflection,

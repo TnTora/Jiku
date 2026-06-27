@@ -342,6 +342,7 @@
                         <th>Deck</th>
                         <th>Note Type</th>
                         <th>Text Field</th>
+                        <th class="max-w-fit">Skip Brackets</th>
                         <th class="w-4"></th>
                     </tr>
                 </thead>
@@ -371,6 +372,9 @@
                                 </select>
                             </td>
                             <td>
+                                <input type="checkbox" bind:checked={rule.skip_brackets} />
+                            </td>
+                            <td>
                                 {@render delete_button(() => {rules.splice(i, 1)})}
                             </td>
                         </tr>
@@ -378,7 +382,7 @@
                     <tr class="h-10"></tr>
 
                     <tr>
-                        <td colspan="4" class="bg-neutral-700 p-0!">
+                        <td colspan="5" class="bg-neutral-700 p-0!">
                             <button
                                 class="w-full py-1 px-2 {btn_shared}"
                                 onclick={() => {
@@ -423,6 +427,7 @@
     }
 
     td {
+        text-align: center;
         padding-inline: 0.25rem;
         padding-block: 0.5rem;
         border-color: #191919;

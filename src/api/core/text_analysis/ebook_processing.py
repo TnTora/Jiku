@@ -409,7 +409,7 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
         if not p_text:
             continue
 
-        tokens = analyzer.parse(p_text, pos_exclude={"SPACE", "PUNCT", "SYM", "X"}, line_model=False)
+        tokens = analyzer.parse(p_text, pos_exclude={"SPACE", "PUNCT", "SYM", "X"}, line_model=False, skip_brackets=False)
         # print("p_tag", p_tag.prettify(), "\n")
         start_ch = stats.total_char
 

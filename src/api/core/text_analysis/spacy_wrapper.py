@@ -15,6 +15,8 @@ analyzer: "SpacyAnalyzer | None" = None
 
 punc_sym_regex = re.compile(r"[^\w\s]+")
 periods_regex = re.compile(r"(。|\.)")
+brackets_regex = re.compile(r"[\(\[].*?[\)\]]")
+
 
 class SpacyAnalyzer:
     # Japanese Tokenizer is not thread-safe
@@ -100,15 +102,18 @@ class SpacyAnalyzer:
             )
 
     @overload
-    def parse(self, text: str, pos_exclude: Iterable[str] | None = None, *, line_model:  Literal[False]) -> Iterator[Morpheme]:
+    def parse(self, text: str, pos_exclude: Iterable[str] | None = None, *, line_model:  Literal[False], skip_brackets: bool) -> Iterator[Morpheme]:
         ...
 
     @overload
-    def parse(self, text: str, pos_exclude: Iterable[str] | None = None, *, line_model:  Literal[True]) -> Iterator[LineToken]:
+    def parse(self, text: str, pos_exclude: Iterable[str] | None = None, *, line_model:  Literal[True], skip_brackets: bool) -> Iterator[LineToken]:
         ...
 
-    def parse(self, text: str, pos_exclude: Iterable[str] | None = None, *, line_model: bool = False) -> Iterator[Morpheme | LineToken]:
+    def parse(self, text: str, pos_exclude: Iterable[str] | None = None, *, line_model: bool = False, skip_brackets=False) -> Iterator[Morpheme | LineToken]:
         model = LineToken if line_model else Morpheme
+        if skip_brackets:
+            text = re.sub(brackets_regex, "", text)
+            print(f"no brackets: {text}")
         if pos_exclude is None:
             return self._parse(text, model)
         return self._filtered_parse(text, pos_exclude, model)

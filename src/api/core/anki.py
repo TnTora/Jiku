@@ -8,7 +8,7 @@ from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.core.config import load_settings_from_db
 from api.core.config.anki import AnkiSettings
 from api.db import SessionLocal
-from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme, KnownStatus
+from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme, KnownStatus, Option
 
 from datetime import datetime
 from sqlalchemy import select, update, delete
@@ -131,6 +131,9 @@ def update_existing_notes() -> None:
         # anki_notes = get_notes_from_query(curr_notes_query)
 
         for params in anki_settings.to_analyze:
+            if (params.deck, params.note_type) in anki_settings.to_update:
+                continue
+
             notes = get_notes(
                     params.deck,
                     params.note_type,
@@ -138,7 +141,7 @@ def update_existing_notes() -> None:
                 )
             anki_notes.update(notes)
 
-        # Delete notes no longer found in Anki
+        # Delete notes no longer found in Anki rules
         db.execute(
             delete(AnkiNote)
             .where(AnkiNote.nid.not_in(anki_notes))
@@ -168,11 +171,21 @@ def update_existing_notes() -> None:
             .values(status=KnownStatus.KNOWN.value)
         )
 
+        # Cleear to_update set
+        anki_settings.to_update.clear()
+
+        db.execute(
+            update(Option)
+            .where(Option.name == "anki")
+            .values(value=anki_settings.model_dump_json())
+        )
+
         db.commit()
 
 
 @celery_app.task(bind=True, base=AbortableTask)
 def update_morphemes_db(self) -> None:
+    global anki_settings  # noqa: PLW0603
     self.update_state(
         state="UPDATING NOTES",
         meta={
@@ -182,6 +195,7 @@ def update_morphemes_db(self) -> None:
             "total_notes": -1
         }
     )
+    anki_settings = load_settings_from_db("anki")
     update_existing_notes()
     analyzer = get_analyzer()
     with SessionLocal() as db:
@@ -256,7 +270,7 @@ def update_morphemes_db(self) -> None:
                     ))
 
                     note_morphs = set()
-                    for morph in analyzer.parse(text, pos_exclude={"SPACE", "PUNCT", "SYM", "X"}, line_model=False):
+                    for morph in analyzer.parse(text, pos_exclude={"SPACE", "PUNCT", "SYM", "X"}, line_model=False, skip_brackets=params.skip_brackets):
                         if morph in note_morphs:
                             continue
                         note_morphs.add(morph)
