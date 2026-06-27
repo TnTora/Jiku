@@ -4,9 +4,14 @@
 
 Estimate known vocabulary from Anki decks and apply this data to a texthooker and epub reader (more in the future).
 
-
-
-Screenshots
+<p float="left">
+  <img src="assets/home.png" width=300>
+  <img src="assets/books_lib.png" width=300>
+  <img src="assets/book_reader.png" width=300>
+  <img src="assets/book_reader.png" width=300>
+  <img src="assets/texthooker_v.png" width=300>
+  <img src="assets/texthooker_h.png" width=300>
+</p>
 
 
 ## Installation
