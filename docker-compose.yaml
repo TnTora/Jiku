@@ -32,6 +32,18 @@ services:
       timeout: 5s
       retries: 3
 
+  migrate:
+    image: tntora/jiku-backend
+    working_dir: /code/src
+    command: alembic upgrade head
+    environment:
+      DATABASE_URL: "postgresql+psycopg://postgres:postgres@db:5432/jikudb"
+    depends_on:
+      - db
+    networks:
+      - app-network
+    restart: "no"
+
   worker:
     # build:
     #   context: .
