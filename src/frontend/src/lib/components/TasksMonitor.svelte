@@ -7,7 +7,7 @@
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 </script>
 
-<div class="absolute bottom-7 left-3 flex p-2 flex-col gap-1 bg-neutral-700 border-neutral-600 border rounded-md z-50">
+<div class="absolute bottom-7 left-3 p-2 bg-neutral-700 border-neutral-600 border rounded-md z-50">
     {#if show_tasks}
         <div class="flex justify-between items-center">
             <span class="font-bold text-md">Tasks</span>
@@ -17,9 +17,11 @@
                 </svg>
             </button>
         </div>
-        {#each task_context.tasks as [task_id, task]}
-            <TaskItem {task} />
-        {/each}
+        <div class="mt-2 max-h-[min(30rem,calc(100vh-3rem))] overflow-scroll flex p-2 flex-col gap-1">
+            {#each task_context.tasks as [task_id, task]}
+                <TaskItem {task} />
+            {/each}
+        </div>
     {:else}
         <button class="{btn_shared_classes} mx-2" style="grid-area:close" title="Show Tasks" onclick={() => { show_tasks = true; }}>
             <svg class="h-6" xmlns="http://www.w3.org/2000/svg" width="1.28em" height="1em" viewBox="0 0 1792 1408">
