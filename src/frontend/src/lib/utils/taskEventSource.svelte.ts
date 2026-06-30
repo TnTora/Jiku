@@ -55,7 +55,7 @@ export class TaskEventSource {
 
     handleMessage(event: MessageEvent) {
         const data: TaskProgress<Progress> = JSON.parse(event.data);
-        console.log(data);
+        // console.log(data);
         let task = this.tasks.get(data.task_id);
         if (task) {
             if (data.status == "CANCELLED") {
