@@ -45,9 +45,6 @@ services:
     restart: "no"
 
   worker:
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.backend
     image: tntora/jiku-backend
     command: celery -A api.celery_worker worker --loglevel=info
     environment:
@@ -75,6 +72,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+      platforms:
+        - linux/amd64
+        - linux/arm64
     image: tntora/jiku-backend
     command: fastapi run src/api/main.py --port 8000
     expose:
@@ -106,6 +106,9 @@ services:
     build:
       context: ./src/frontend
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
     image: tntora/jiku-frontend
     environment:
       PORT: 5173

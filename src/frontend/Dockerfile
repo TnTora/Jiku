@@ -1,5 +1,10 @@
 # Use a Node.js Alpine image for the builder stage
-FROM node:24-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:24-alpine AS builder
+
+# These are automatically set by buildx
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
