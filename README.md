@@ -23,7 +23,7 @@ The recommended installation method is to use the docker-compose file. Running a
 3. Open terminal (or Command Prompt/Powershell) in the folder containing the downloaded file
 4. Run the following command and wait for the installation to complete
 ```
-docker-compose up -d
+docker-compose -p jiku up -d
 ```
 
 Once the command finishes you can stop and start the app from  Docker Desktop or Docker CLI.
