@@ -235,7 +235,7 @@
             <a href="/books" class="text-nowrap">Show All Books</a>
         </div>
 
-        {#if (data.books.size > 0)}
+        {#if (data.books.length > 0)}
             <BookCarousel books={data.books}/>
         {:else}
             <div class="w-[calc(100%-1rem)] p-3 bg-neutral-700 rounded-md flex items-center justify-center">
