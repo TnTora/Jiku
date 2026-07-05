@@ -7,3 +7,4 @@ celery_app = Celery(
     backend=getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1"),
     include=["api.core.text_analysis.ebook_processing", "api.core.anki"],
 )
+celery_app.conf.task_track_started = True
