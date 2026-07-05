@@ -44,7 +44,10 @@ import shutil
 
 from datetime import datetime, timedelta, UTC
 
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from celery.contrib.abortable import AbortableAsyncResult
 
 router = APIRouter()
 
@@ -318,6 +321,16 @@ def delete_book(book_id: int, db: Annotated[Session, Depends(get_db)]):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
 
     db.delete(book)
+    db.flush()
+
+    for creator in book.creators_:
+        has_books = db.execute(
+            select(CreatorBook).where(CreatorBook.creator_id == creator.id)
+        ).scalar()
+
+        if has_books is None:
+            db.delete(creator)
+
     db.commit()
     shutil.rmtree(config_path / "books" / str(book_id))
 
@@ -339,8 +352,23 @@ active_tasks_ids = {}
 @router.put("/stop_book_processing")
 def stop_book_processing(data: BookProcessCancel):
     if data.id in active_tasks_ids:
-        result = process_ebub.AsyncResult(data.id)
-        result.abort()
+        result: AbortableAsyncResult = process_ebub.AsyncResult(data.id)
+        if result.state == "PENDING":
+            result.revoke()
+        else:
+            result.abort()
+
+
+@router.put("/clear_all_tasks")
+def clear_all_tasks():
+    for task_id in active_tasks_ids:
+        result: AbortableAsyncResult = process_ebub.AsyncResult(task_id)
+        if result.state == "PENDING":
+            result.revoke()
+        else:
+            result.abort()
+
+    # active_tasks_ids.clear()
 
 
 @router.get("/tasks_events", response_class=EventSourceResponse)
@@ -396,7 +424,7 @@ async def tasks_events():
             name = active_tasks_ids.get(task_id, "Task")
             task["name"] = name
 
-            if task_status in {"FAILURE", "SUCCESS", "CANCELLED"}:
+            if task_status in {"FAILURE", "SUCCESS", "CANCELLED", "REVOKED"}:
                 del active_tasks_ids[task_id]
 
             yield task

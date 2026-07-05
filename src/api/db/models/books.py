@@ -70,7 +70,7 @@ class BookTokenCount(Base):
 class CreatorBook(Base):
     __tablename__ = "creators_books"
 
-    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), primary_key=True)
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id", ondelete="CASCADE"), primary_key=True)
     creator_id: Mapped[int] = mapped_column(ForeignKey("creators.id"), primary_key=True)
 
 
