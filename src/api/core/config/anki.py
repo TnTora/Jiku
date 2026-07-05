@@ -18,6 +18,12 @@ class AnkiSettings(BaseModel):
     to_update: set[tuple[str, str]] = set() # {(deck, note_type)}
 
 
+class AnkiInfo(BaseModel):
+    decks: list[str] = []
+    note_types: list[str] = []
+    note_types_fields: dict[str, list[str]] = {}
+
+
 def load_settings_from_db(db: Session) -> AnkiSettings:
     result = db.execute(
         select(Option.value).where(Option.name == "anki")

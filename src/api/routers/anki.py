@@ -1,12 +1,14 @@
+from api.core.config.anki import AnkiInfo
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi import APIRouter, status, Depends, HTTPException
 
 from api.db import get_db
-from api.db.models.core import Morpheme
+from api.db.models.core import Morpheme, Option
 
 from api.schemas.core import KnownMorphemes
 from api.core.anki import get_decks, get_note_types, get_all_note_types_fields, update_morphemes_db, AnkiError
 from api.core.config.shared import redis_host
+from api.core.config import load_settings_from_db
 
 from sqlalchemy import select, distinct, func
 from sqlalchemy.orm import Session
@@ -40,16 +42,43 @@ def get_knonw_morphemes(db: Annotated[Session, Depends(get_db)]):
 
 
 @router.get("/anki_decks_info")
-def get_anki_decks_info():
+def get_anki_decks_info(db: Annotated[Session, Depends(get_db)]):
+    anki_info = load_settings_from_db("anki_info")
+    return anki_info
+
+
+@router.put("/update_anki_decks_info")
+def update_anki_decks_info(db: Annotated[Session, Depends(get_db)]):
+    print("Anki: updating anki decks info")
     try:
         decks = get_decks()
         note_types = get_note_types()
         note_types_fields = get_all_note_types_fields(note_types)
     except AnkiError as e:
+        print(f"AnkiError: {e.msg}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=e.msg) from e
     else:
-        return {"decks": decks, "note_types": note_types, "note_types_fields": note_types_fields}
+        anki_info = db.execute(
+            select(Option).where(Option.name == "anki_info")
+        ).scalar()
 
+        new_anki_info = AnkiInfo(
+                decks=decks,
+                note_types=note_types,
+                note_types_fields=note_types_fields,
+            )
+
+        if anki_info is None:
+            db.add(
+                Option(
+                    name="anki_info",
+                    value=new_anki_info.model_dump_json()
+                )
+            )
+        else:
+            anki_info.value = new_anki_info.model_dump_json()
+
+        db.commit()
 
 syncing_morphs_id = None
 

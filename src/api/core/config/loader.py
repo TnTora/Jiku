@@ -1,4 +1,4 @@
-from api.core.config.anki import AnkiSettings
+from api.core.config.anki import AnkiSettings, AnkiInfo
 from api.db import SessionLocal
 from api.db.models.core import Option
 
@@ -8,12 +8,13 @@ import json
 
 from typing import Literal
 
-type OptionSectionName = Literal["anki"]
-type OptionSection = AnkiSettings
+type OptionSectionName = Literal["anki", "anki_info"]
+type OptionSection = AnkiSettings | AnkiInfo
 
 
 option_type = {
-    "anki": AnkiSettings
+    "anki": AnkiSettings,
+    "anki_info": AnkiInfo,
 }
 
 def load_settings_from_db(name: OptionSectionName) -> OptionSection:
@@ -27,6 +28,7 @@ def load_settings_from_db(name: OptionSectionName) -> OptionSection:
                 select(Option.value).where(Option.name == name)
             )
         except Exception:
+            # TODO: specify Exception and inform user
             return option_type[name]()
 
         settings_json_str = result.scalar()

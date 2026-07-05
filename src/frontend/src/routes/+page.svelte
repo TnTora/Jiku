@@ -3,6 +3,7 @@
     import KnownBar from "$lib/components/KnownBar.svelte";
     import BookCarousel from "$lib/components/BookCarousel.svelte";
 	import { getJikuErrorsContext, getTextInputPopupContext } from "$lib/utils/context.js";
+	import { invalidateAll } from "$app/navigation";
 
     let { data } = $props();
     let btn_shared = "bg-neutral-700 hover:bg-neutral-900 active:bg-neutral-950 cursor-pointer";
@@ -24,12 +25,13 @@
     };
 
     let anki_port: number = $state(data.anki_settings.port);
-    let anki_decks: string[] = $state([]);
-    let anki_note_types: string[] = $state([]);
+    // let anki_decks: string[] = $state([]);
+    // let anki_note_types: string[] = $state([]);
     let rules = $state(data.anki_settings.to_analyze);
 
     $effect(() => {
         console.log(rules);
+        console.log(data.books);
     });
 
     if (browser) {
@@ -45,8 +47,8 @@
             }
         }
 
-        anki_decks = JSON.parse(localStorage.getItem("anki_decks")?? "[]");
-        anki_note_types = JSON.parse(localStorage.getItem("anki_note_types")?? "[]");
+        // anki_decks = JSON.parse(localStorage.getItem("anki_decks")?? "[]");
+        // anki_note_types = JSON.parse(localStorage.getItem("anki_note_types")?? "[]");
     }
 
     $effect(() => {
@@ -165,33 +167,29 @@
 
     async function loadAnkiData() {
         try {
-            const res = await fetch("/api_bridge/anki/anki_decks_info");
-            const anki_info = await res.json();
-
-            anki_decks = anki_info.decks;
-            anki_note_types = anki_info.note_types;
-
-            localStorage.setItem("anki_decks", JSON.stringify(anki_decks));
-            localStorage.setItem("anki_note_types", JSON.stringify(anki_note_types));
-
-            for (let [note_type, fields] of Object.entries(anki_info.note_types_fields)) {
-                localStorage.setItem(`anki_note_type_${note_type}`, JSON.stringify(fields));
+            const res = await fetch("/api_bridge/anki/update_anki_decks_info",{
+                method: "PUT",
+            });            
+            if (res.ok) {
+                invalidateAll();
+                // TODO: create custom info message
+                alert("Anki info updated");
+            } else {
+                alert(JSON.stringify(await res.json()));
             }
-            
-
         } catch (error) {
             alert(error);
         }
     }
 
-    function get_fields(note_type: string) {
-        if (browser) {
-            return JSON.parse(localStorage.getItem(`anki_note_type_${note_type}`)?? "[]");
-        } else {
-            return [];
-        }
+    // function get_fields(note_type: string) {
+    //     if (browser) {
+    //         return JSON.parse(localStorage.getItem(`anki_note_type_${note_type}`)?? "[]");
+    //     } else {
+    //         return [];
+    //     }
         
-    }
+    // }
 
     async function updateAnkiSettings() {
         const new_settings = {
@@ -352,21 +350,21 @@
                         <tr>
                             <td>
                                 <select name={`rule-${i}-deck`} bind:value={rule.deck}>
-                                    {#each anki_decks as deck}
+                                    {#each data.anki_info.decks as deck}
                                         <option value={deck}>{deck}</option>
                                     {/each}
                                 </select>
                             </td>
                             <td>
                                 <select name={`rule-${i}-notetype`} bind:value={rule.note_type}>
-                                    {#each anki_note_types as note_type}
+                                    {#each data.anki_info.note_types as note_type}
                                         <option value={note_type}>{note_type}</option>
                                     {/each}
                                 </select>
                             </td>
                             <td>
                                 <select name={`rule-${i}-textfield`} bind:value={rule.text_field}>
-                                    {#each get_fields(rule.note_type) as field}
+                                    {#each data.anki_info.note_types_fields[rule.note_type] as field}
                                         <option value={field}>{field}</option>
                                     {/each}
                                 </select>
