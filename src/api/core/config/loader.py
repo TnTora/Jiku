@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 import json
 
-from typing import Literal
+from typing import Literal, overload
 
 type OptionSectionName = Literal["anki", "anki_info"]
 type OptionSection = AnkiSettings | AnkiInfo
@@ -16,6 +16,15 @@ option_type = {
     "anki": AnkiSettings,
     "anki_info": AnkiInfo,
 }
+
+@overload
+def load_settings_from_db(name: Literal["anki"]) -> AnkiSettings:
+    ...
+
+@overload
+def load_settings_from_db(name: Literal["anki_info"]) -> AnkiInfo:
+    ...
+
 
 def load_settings_from_db(name: OptionSectionName) -> OptionSection:
     if name not in option_type:
