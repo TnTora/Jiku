@@ -39,7 +39,8 @@ services:
     environment:
       DATABASE_URL: "postgresql+psycopg://postgres:postgres@db:5432/jikudb"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - app-network
     restart: "no"
@@ -66,6 +67,11 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "celery", "inspect", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 
   backend:
@@ -91,9 +97,14 @@ services:
       STATIC_URL: "/api_bridge"
       CONFIG_DIR: "/data"
     depends_on:
-      - db
-      - redis
-      - worker
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - backend_data:/data
     networks:
