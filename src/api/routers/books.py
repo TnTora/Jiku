@@ -15,6 +15,7 @@ from api.schemas.books import (
     BookmarkRename,
     BookProcessCancel,
     BookLastOpenUpdate,
+    BookProgressStatusUpdate,
 )
 
 from api.db import get_db
@@ -96,6 +97,18 @@ def get_section_content(book_id: int, section_name: str, db: Annotated[Session, 
     return content
 
 
+def calculate_progress_status(curr_token: int, total_tokens: int) -> str:
+    PERCENTAGE_THRESHOLD = 5
+    READING_THRESHOLD_FIXED = 1500
+    READING_THRESHOLD_PERCENTAGE = PERCENTAGE_THRESHOLD*total_tokens/100
+
+    if curr_token >= total_tokens:
+        return "completed"
+    if curr_token >= min(READING_THRESHOLD_FIXED, READING_THRESHOLD_PERCENTAGE):
+        return "reading"
+    return "new"
+
+
 @router.put(
     "/update_last_pos",
     status_code=status.HTTP_202_ACCEPTED)
@@ -103,6 +116,8 @@ def update_last_pos(pos_update: BookLastPosUpdate, db: Annotated[Session, Depend
     last_pos = db.execute(
         select(LastPosition).where(LastPosition.book_id == pos_update.id)
     ).scalar()
+
+    print(pos_update)
 
     if last_pos is None:
         last_pos = LastPosition(
@@ -116,6 +131,22 @@ def update_last_pos(pos_update: BookLastPosUpdate, db: Annotated[Session, Depend
         last_pos.section = pos_update.section
         last_pos.tok_pos = pos_update.tok_pos
         last_pos.ch_pos = pos_update.ch_pos
+
+    if pos_update.tok_pos is None:
+        return
+
+    book = db.execute(
+        select(Book).where(Book.id == pos_update.id)
+    ).scalar()
+
+    if book is None:
+        return
+
+    if book.progress_status == "completed":
+        return
+
+    new_status = calculate_progress_status(pos_update.tok_pos, book.total_tokens)
+    book.progress_status = new_status
 
     db.commit()
 
@@ -131,6 +162,19 @@ def update_last_opened(data: BookLastOpenUpdate, db: Annotated[Session, Depends(
 
     book.last_opened = datetime.now(UTC)
 
+    db.commit()
+
+
+@router.put(
+    "/set_progress_status",
+    status_code=status.HTTP_202_ACCEPTED)
+def set_completed(data: BookProgressStatusUpdate, db: Annotated[Session, Depends(get_db)]):
+    book = db.execute(select(Book).where(Book.id == data.id)).scalar()
+
+    if book is None:
+        return
+
+    book.progress_status = data.new_status
     db.commit()
 
 

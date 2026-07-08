@@ -115,6 +115,11 @@ class BookLastOpenUpdate(BaseModel):
     id: int
 
 
+class BookProgressStatusUpdate(BaseModel):
+    id: int
+    new_status: str
+
+
 class CollectionBookCreate(BaseModel):
     book_id: int
     collection_id: int

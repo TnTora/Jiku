@@ -11,6 +11,7 @@
 	import { goto } from "$app/navigation";
 	import TextInputPopup from "$lib/components/TextInputPopup.svelte";
 	import { browser } from "$app/environment";
+	import ConfirmationPopup from "$lib/components/ConfirmationPopup.svelte";
 
     let { data } = $props();
     let { book, status_map } = $derived(data);
@@ -77,6 +78,8 @@
     let bookmark_selection: number | null = null;
     let bookmark_selection_name: string | null = $state(null);
     let bookmark_selection_preview: string | null = null;
+
+    let show_completion_confirmation = $state(false);
 
     let book_container: HTMLDivElement;
     let book_container_height: number = $state(0);
@@ -180,9 +183,13 @@
         // console.log(getScrollPosition(book_container)+book_container_inline_offset, getScrollLength(book_container));
         const next_position = getScrollPosition(book_container)+book_container_inline_offset;
         // console.log(next_position, next_section);
-        if ((Math.ceil(next_position) >= getScrollLength(book_container)) && next_section) {
-            backward_load = false;
-            loadSectionContent(next_section);
+        if (Math.ceil(next_position) >= getScrollLength(book_container)) {
+            if (next_section) {
+                backward_load = false;
+                loadSectionContent(next_section);
+            } else {
+                show_completion_confirmation = true;
+            }
         } else {
             // book_container.scrollBy(pageScrollParam(book_container_inline_offset));
             scrollToPosition(next_position);
@@ -384,6 +391,30 @@
         bookmark_selection_name = null;
         bookmark_selection_preview = null;
         bookmark_selection = null;
+    }
+
+    async function setBookCompleted() {
+        try {
+            const res = await fetch("/api_bridge/books/set_progress_status", {
+                method: "PUT",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    id: book.id,
+                    new_status: "completed",
+                })
+            });
+        } catch (error) {
+            console.error("Failed to set book as completed", error);
+            errors.push({
+                short: "Failed to set book as completed",
+                details: error,
+            });
+            throw error;
+        }
+        show_completion_confirmation = false;
     }
 
     function onBookContentUpdate() {
@@ -627,6 +658,17 @@
                 onOk={() => {
                     addBookmark();
                     cancelBookmarking();
+                }}
+            />
+        {/if}
+
+
+        {#if show_completion_confirmation}
+            <ConfirmationPopup
+                text="You have reached the end of the book. Mark it as completed?"
+                onOk={setBookCompleted}
+                onCancel={() => {
+                    show_completion_confirmation = false;
                 }}
             />
         {/if}
