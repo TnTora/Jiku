@@ -7,9 +7,9 @@
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 </script>
 
-<div class="absolute bottom-7 left-3 p-2 bg-neutral-700 border-neutral-600 border rounded-md z-50">
+<div class="absolute bottom-7 left-1.5 p-2 flex items-center flex-col bg-neutral-700 border-neutral-600 border rounded-md z-50">
     {#if show_tasks}
-        <div class="flex justify-between items-center gap-2">
+        <div class="mt-1 flex w-full justify-between items-center gap-2">
             <span class="font-bold text-md">Tasks</span>
             <button class="text-sm hover:text-sky-600 active:text-sky-500 cursor-pointer">clear all</button>
             <button class="mx-2 hover:text-red-700 active:text-red-500 hover:cursor-pointer" style="grid-area:close" title="Hide Tasks" onclick={() => { show_tasks = false; }}>
@@ -24,12 +24,11 @@
             {/each}
         </div>
     {:else}
-        <button class="{btn_shared_classes} mx-2" style="grid-area:close" title="Show Tasks" onclick={() => { show_tasks = true; }}>
-            <svg class="h-6" xmlns="http://www.w3.org/2000/svg" width="1.28em" height="1em" viewBox="0 0 1792 1408">
+        <button class="{btn_shared_classes}" style="grid-area:close" title="Show Tasks" onclick={() => { show_tasks = true; }}>
+            <svg class="h-3 w-3 aspect-square" xmlns="http://www.w3.org/2000/svg" width="1.28em" height="1em" viewBox="0 0 1792 1408">
                 <path d="M0 0h1792v1408H0z" fill="none" />
                 <path fill="currentColor" d="M1024 1280h640v-128h-640zM640 768h1024V640H640zm640-512h384V128h-384zm512 832v256q0 26-19 45t-45 19H64q-26 0-45-19t-19-45v-256q0-26 19-45t45-19h1664q26 0 45 19t19 45m0-512v256q0 26-19 45t-45 19H64q-26 0-45-19T0 832V576q0-26 19-45t45-19h1664q26 0 45 19t19 45m0-512v256q0 26-19 45t-45 19H64q-26 0-45-19T0 320V64q0-26 19-45T64 0h1664q26 0 45 19t19 45" />
             </svg>
-            
         </button>
     {/if}
 </div>

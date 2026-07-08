@@ -1,4 +1,5 @@
 import { invalidateAll } from "$app/navigation"
+import { page } from "$app/state"
 import { getContext, setContext } from "svelte"
 import { SvelteMap } from "svelte/reactivity"
 
@@ -89,6 +90,12 @@ export class TaskEventSource {
         if ((task.status == "PROGRESS") && (data.result)) {
             task.total = data.result.total;
             task.progress = data.result.current;
+        }
+        if (task.status == "SUCCESS"){
+            console.log("task success");
+            if (page.url.pathname === "/books") {
+                invalidateAll();
+            }
         }
     }
 
