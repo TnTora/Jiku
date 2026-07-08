@@ -9,7 +9,7 @@
     import { getJikuErrorsContext } from "$lib/utils/context";
     import { getConfirmationPopupContext } from "$lib/utils/context";
     import { setSelectColelctionPopupContext } from "./context.js";
-	import { goto, invalidateAll } from "$app/navigation";
+	import { goto, invalidate, invalidateAll } from "$app/navigation";
 	import { onMount } from "svelte";
 
     import { addBookToCollection } from "./requests.js";
@@ -19,9 +19,14 @@
 
 
     let stored_params: string = "";
+    let item_size_rem: number = $state(0);
 
     if (browser) {
         stored_params = sessionStorage.getItem("books_params")?? "";
+        const stored_size = localStorage.getItem("item_size_rem");
+        if (stored_size) {
+            item_size_rem = Number(stored_size);
+        }
     }
 
     if (stored_params && (page.url.searchParams.toString() != stored_params) ) {
@@ -29,8 +34,13 @@
     }
 
     $effect(() => {
-        console.log(page.url.searchParams);
+        // console.log(page.url.searchParams);
+        // console.log(!(page.url.searchParams.get("asc") == "no"));
         sessionStorage.setItem("books_params", page.url.searchParams.toString());
+    });
+
+    $effect(() => {
+        localStorage.setItem("item_size_rem", JSON.stringify(item_size_rem));
     });
 
     const errors = getJikuErrorsContext();
@@ -41,13 +51,13 @@
     // svelte-ignore state_referenced_locally
     let { collections } = $state(data);
 
-    let ascending_order: boolean = $state(Boolean(page.url.searchParams.get("asc")));
-    let item_size_rem: number = $state(12.5);
+    let ascending_order: boolean = $derived(!(page.url.searchParams.get("asc") == "no"));
     let show_side_panel: boolean = $state(false);
     let selecting: boolean = $state(false);
     let selected = $state(new SvelteSet());
     let title_search: string = $state("");
-
+    let status_selection: string = $state(page.url.searchParams.get("progress") ?? "");
+    let order_selection: string = $state(page.url.searchParams.get("ordr") ?? "0");
 
     let select_collection_popup: SelectCollectionPopupContext = $state({
         show: false,
@@ -132,6 +142,7 @@
                 id="status"
                 class="px-2 py-1 text-md text-center shrink-2 min-w-13 bg-neutral-900 border-neutral-900 hover:bg-neutral-950 border rounded-lg"
                 onchange={function(this: HTMLSelectElement) {goto(modifiedSearchParams("progress", this.value))}}
+                bind:value={status_selection}
             >
                 <option value="">All</option>
                 <option value="reading">Reading</option>
@@ -172,11 +183,12 @@
                         const search_params = new URLSearchParams(page.url.searchParams);
                         if (Number(this.value) > 0) {
                             search_params.set("asc", "no");
-                            ascending_order = false;
+                            // ascending_order = false;
                         }
                         search_params.set("ordr", this.value);
                         goto(`?${search_params.toString()}`);
                     }}
+                    bind:value={order_selection}
                 >
                     <option value="0">Title</option>
                     <option value="1">Last Added</option>
@@ -192,7 +204,7 @@
                         } else {
                             goto(modifiedSearchParams("asc", ""))
                         }
-                        ascending_order = !ascending_order
+                        // ascending_order = !ascending_order
                     }}
                 >
                     {#if ascending_order}
@@ -242,12 +254,12 @@
         <BookGridDisplay bind:selected={selected} bind:selecting={selecting} items={data.books} item_min_w={`${item_size_rem}rem`}/>
     </div>
 
-    <div class="h-8 px-3 py-2 flex items-center justify-between" style="grid-area: footer">
+    <div class="px-3.5 pt-0.5 pb-1 flex border-t border-neutral-700 bg-neutral-900 text-xs text-neutral-300 items-center justify-between" style="grid-area: footer">
         <div class="flex items-center justify-start gap-3">
         {#if selecting}
             <button
                 title="Delete"
-                class="text-sm text-red-500 hover:text-red-700 active:text-red-400 hover:cursor-pointer"
+                class="text-red-500 hover:text-red-700 active:text-red-400 hover:cursor-pointer"
                 onclick={() => {
                     if (selected.size == 0) { return; }
 
@@ -268,7 +280,7 @@
             </button>
             <button
                 title="Add to Collection"
-                class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
                 onclick={() => {
                     if (selected.size == 0) { return; }
 
@@ -294,7 +306,7 @@
         {#if selecting}
             <button
                 title="Cancel"
-                class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
                 onclick={() => {
                     selecting = false;
                 }}
@@ -303,7 +315,7 @@
             </button>
             <button
                 title="Select All"
-                class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
                 onclick={() => {
                     data.books.forEach((item) => { selected.add(item); });
                 }}
@@ -313,7 +325,7 @@
         {:else}
             <button
                 title="Select"
-                class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
                 onclick={() => {
                     selecting = true;
                 }}

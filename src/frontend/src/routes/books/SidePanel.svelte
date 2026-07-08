@@ -196,12 +196,12 @@
 
 
 {#if tab == "collections"}
-<div class="bg-neutral-800 border-neutral-700 border-t border-r border-r-neutral-600 flex items-center justify-between" style="grid-area: sidefooter;">
-    <div class="px-5 py-1 flex items-center gap-4">
+<div class="bg-neutral-800 border-neutral-700 border-t border-r border-r-neutral-600 flex items-center justify-between text-xs text-neutral-300" style="grid-area: sidefooter;">
+    <div class="px-5 pt-0.5 pb-1 flex items-center gap-4">
     {#if editing}
         <button
             title="Edit Done"
-            class="text-sm text-neutral-400 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+            class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
             onclick={() => { editing = false; }}
         >
             Done
@@ -209,17 +209,31 @@
     {:else}
         <button
             title="Edit Collection"
-            class="text-sm text-neutral-500 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+            class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
             onclick={() => { editing = true; }}
         >
             Edit Collections
         </button>
     {/if}
     </div>
-    <div class="flex items-center">
+    <button
+        title="New Collection"
+        class="h-full text-xs bg-neutral-900 border-neutral-700 hover:bg-neutral-950 active:bg-[#353535]"
+        onclick={() => {
+            console.log("input modal");
+            text_input_popup.show = true;
+            text_input_popup.text = "Choose a name for the new collection";
+            text_input_popup.onOk = addCollection;
+        }}
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" width="1.25rem" height="1.25rem" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M18 12.998h-5v5a1 1 0 0 1-2 0v-5H6a1 1 0 0 1 0-2h5v-5a1 1 0 0 1 2 0v5h5a1 1 0 0 1 0 2" />
+        </svg>        
+    </button>
+    <!-- <div class="flex items-center">
         <button
             title="New Collection"
-            class="aspect-square h-7 text-sm bg-neutral-900 border-neutral-700 hover:bg-neutral-950 active:bg-[#353535]"
+            class="aspect-square h-full text-xs bg-neutral-900 border-neutral-700 hover:bg-neutral-950 active:bg-[#353535]"
             onclick={() => {
                 console.log("input modal");
                 text_input_popup.show = true;
@@ -229,7 +243,7 @@
         >
             +
         </button>
-    </div>
+    </div> -->
 </div>
 {/if}
 
