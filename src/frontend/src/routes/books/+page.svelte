@@ -26,6 +26,8 @@
         const stored_size = localStorage.getItem("item_size_rem");
         if (stored_size) {
             item_size_rem = Number(stored_size);
+        } else {
+            item_size_rem = 12.5;
         }
     }
 

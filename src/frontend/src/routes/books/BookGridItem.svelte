@@ -67,6 +67,7 @@
                 addBookToCollection(item.id, errors)(collection_id);
             }
             select_collection_popup.show = true;
+            show_item_options = false;
         }}
     >
         Add to Collection
@@ -85,6 +86,7 @@
             }
             confirmation_popup.text = `Delete '${item.title}'?`
             confirmation_popup.show = true;
+            show_item_options = false;
         }}
     >
         Delete
