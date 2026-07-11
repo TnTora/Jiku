@@ -10,7 +10,7 @@
     let { toggleSidePanel, show_side_panel=$bindable() } = $props();
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 
-    async function handleFilesInput (this: HTMLInputElement) {
+    function handleFilesInput (this: HTMLInputElement) {
         if (!this.files) { return; }
         console.log("files input");
 
@@ -19,11 +19,17 @@
         for (const file of this.files) {
             console.log(file.name);
             const formData = new FormData();
+            const task = task_context.createTask(file.name);
             formData.append("file", file, file.name);
-            await fetch(`/api_bridge/books/add_book`, {
+            fetch(`/api_bridge/books/add_book?task_id=${task.id}`, {
                 method: "POST",
                 body: formData,
+                signal: task.controller.signal,
             })
+            .then(
+                () => { task.status = "WAITING"},
+                () => { task.status = "FAILED"}
+            )
         }
     }
 

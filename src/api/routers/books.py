@@ -32,6 +32,7 @@ from api.db.models.books import (
     CollectionBook, BookTokenCount
 )
 
+from api.celery_worker import celery_app
 from api.core.text_analysis.ebook_processing import process_ebub
 from api.core.config import config_path, tmp_path
 from api.core.config.shared import redis_host
@@ -93,7 +94,6 @@ def get_section_content(book_id: int, section_name: str, db: Annotated[Session, 
 
     content_path = config_path / "books" / str(book_id) / "content" / filename
     content = content_path.read_text()
-    # TODO: replase jiku:// with api url
     return content
 
 
@@ -391,28 +391,40 @@ def delete_collection(collection_id: int, db: Annotated[Session, Depends(get_db)
 
 
 active_tasks_ids = {}
+task_id_celery_to_internal = {}
+task_id_internal_to_celery = {}
 
 
 @router.put("/stop_book_processing")
 def stop_book_processing(data: BookProcessCancel):
-    if data.id in active_tasks_ids:
-        result: AbortableAsyncResult = process_ebub.AsyncResult(data.id)
+    if data.id in task_id_internal_to_celery:
+        celery_task_id = task_id_internal_to_celery[data.id]
+        result: AbortableAsyncResult = process_ebub.AsyncResult(celery_task_id)
         if result.state == "PENDING":
-            result.revoke()
+            celery_app.control.revoke(celery_task_id)
         else:
             result.abort()
+    else:
+        active_tasks_ids.pop(data.id)
+
 
 
 @router.put("/clear_all_tasks")
 def clear_all_tasks():
-    for task_id in active_tasks_ids:
-        result: AbortableAsyncResult = process_ebub.AsyncResult(task_id)
-        if result.state == "PENDING":
-            result.revoke()
+    to_delete = []
+    for task_id in list(active_tasks_ids):
+        if task_id in task_id_internal_to_celery:
+            celery_task_id = task_id_internal_to_celery[task_id]
+            result: AbortableAsyncResult = process_ebub.AsyncResult(celery_task_id)
+            if result.state == "PENDING":
+                celery_app.control.revoke(celery_task_id)
+            else:
+                result.abort()
         else:
-            result.abort()
+            to_delete.append(task_id)
 
-    # active_tasks_ids.clear()
+    for task_id in to_delete:
+        active_tasks_ids.pop(task_id)
 
 
 @router.get("/tasks_events", response_class=EventSourceResponse)
@@ -421,11 +433,20 @@ async def tasks_events():
     async with redis.Redis(host=redis_host, port=6379, db=1, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
         await pubsub.subscribe("__keyevent@1__:set")
 
-        #If active_tasks_ids is not empty, yield temp status.
+        #If active_tasks_ids is not empty, yield status.
         for task_id, filename in active_tasks_ids.items():
+            if task_id in task_id_internal_to_celery:
+                celery_task_id = task_id_internal_to_celery[task_id]
+                result: AbortableAsyncResult = process_ebub.AsyncResult(celery_task_id)
+                tmp_status = result.state
+                progress = result.result if tmp_status == "PROGRESS" else None
+            else:
+                tmp_status = "UPLOADING"
+                progress = None
+
             task = {
-                "status": "WAITING",
-                "result": None,
+                "status": tmp_status,
+                "result": progress,
                 "traceback": None,
                 "children": None,
                 "date_done": None,
@@ -439,7 +460,7 @@ async def tasks_events():
         while True:
             print("waiting for message...")
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=30)
-            print(message)
+            # print(message)
 
             if not active_tasks_ids and (datetime.now(UTC)-last_message > timedelta(seconds=30)):
                 break
@@ -447,7 +468,7 @@ async def tasks_events():
             if message is None:
                 continue
 
-            print('message["data"]', message["data"], " | ", str(type(message["data"])))
+            # print('message["data"]', message["data"], " | ", str(type(message["data"])))
 
             task = await redisdb.get(message["data"])
 
@@ -458,18 +479,25 @@ async def tasks_events():
             except (TypeError, KeyError, json.JSONDecodeError):
                 continue
 
-            if task_id not in active_tasks_ids:
+            if task_id not in task_id_celery_to_internal:
                 continue
+
+            task_id_internal = task_id_celery_to_internal[task_id]
 
             last_message = datetime.now(UTC)
 
-            print(task, task_id, task_status, sep="\n")
+            # print(task, task_id, task_id_internal, task_status, sep="\n")
 
-            name = active_tasks_ids.get(task_id, "Task")
+            name = active_tasks_ids.get(task_id_internal, "Task")
             task["name"] = name
+            task["task_id"] = task_id_internal
 
             if task_status in {"FAILURE", "SUCCESS", "CANCELLED", "REVOKED"}:
-                del active_tasks_ids[task_id]
+                active_tasks_ids.pop(task_id_internal)
+                task_id_internal_to_celery.pop(task_id_internal)
+                task_id_celery_to_internal.pop(task_id)
+            elif task_status == "ABORTED":
+                task["status"] = "ABORTING"
 
             yield task
 
@@ -484,10 +512,11 @@ async def tasks_events():
 
 
 @router.post("/add_book")
-def add_book(file: UploadFile):
+def add_book(task_id: str, file: UploadFile):
     if file.filename is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="filename not found")
 
+    active_tasks_ids[task_id] = file.filename
     print("Saving file: ", file.filename)
     content = file.file.read()
     tmp_file = (tmp_path / file.filename)
@@ -495,6 +524,7 @@ def add_book(file: UploadFile):
 
     result = process_ebub.delay(str(tmp_file), file.filename)
 
-    print(f"{result.id = }")
-    active_tasks_ids[result.id] = file.filename
+    print(f"{result.id = }, {len(active_tasks_ids) = }")
+    task_id_celery_to_internal[result.id] = task_id
+    task_id_internal_to_celery[task_id] = result.id
     return {"id": result.id}

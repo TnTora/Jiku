@@ -9,6 +9,7 @@ export interface Task {
     total: number
     progress: number
     status: string
+    controller?: AbortController
 }
 
 interface Progress {
@@ -30,10 +31,26 @@ export class TaskEventSource {
     url: string;
     src: EventSource | null = null;
     tasks: SvelteMap<string, Task>;
+    tasks_finished;
 
     constructor(url: string) {
         this.url = url;
         this.tasks = new SvelteMap<string, Task>();
+        this.tasks_finished = $derived.by(() => {
+            let success = 0;
+            let fail = 0;
+            for (const [task_id, task] of this.tasks) {
+                if (task.status == "SUCCESS") {
+                    success++;
+                } else if (task.status == "FAILURE") {
+                    fail++;
+                }
+            }
+            return {
+                success: success,
+                fail:fail
+            };
+        })
         // $effect(() => {
         //     console.log(this.tasks);
         // })
@@ -59,7 +76,7 @@ export class TaskEventSource {
         // console.log(data);
         let task = this.tasks.get(data.task_id);
         if (task) {
-            if (data.status == "CANCELLED") {
+            if (data.status == "CANCELLED" || data.status == "REVOKED") {
                 this.removeTask(data.task_id);
             } else {
                 this.updateTask(task, data);
@@ -67,6 +84,19 @@ export class TaskEventSource {
         } else {
             this.addTask(data);
         }
+    }
+
+    createTask(name: string) {
+        const task = $state({
+            id: crypto.randomUUID(),
+            name: name,
+            status: "UPLOADING",
+            total: -1,
+            progress: 0,
+            controller: new AbortController(),
+        });
+        this.tasks.set(task.id, task);
+        return task;
     }
 
     addTask(data: TaskProgress<Progress> ) {
@@ -95,6 +125,50 @@ export class TaskEventSource {
             console.log("task success");
             if (page.url.pathname === "/books") {
                 invalidateAll();
+            }
+        }
+    }
+
+    clearFinished() {
+        for (const [task_id, task] of this.tasks) {
+            if (task.status == "SUCCESS" || task.status == "FAILURE") {
+                this.removeTask(task_id);
+            }
+        }
+    }
+
+    async closeTask(task_id: string) {
+        const task = this.tasks.get(task_id);
+        if (!task) { return; }
+
+        if (task.status == "UPLOADING") {
+            task.controller?.abort();
+            this.removeTask(task.id);
+            return;
+        }
+
+        if (task.status == "SUCCESS" || task.status == "FAILURE") {
+            this.removeTask(task.id);
+            return;
+        }
+
+        const res = await fetch("/api_bridge/books/stop_book_processing", {
+            method:"PUT",
+            headers: {
+                "accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                id: task.id
+            }),
+        });
+    }
+
+    stopUploads() {
+        for (const [task_id, task] of this.tasks) {
+            if (task.status == "UPLOADING") {
+                task.controller?.abort();
+                this.removeTask(task_id);
             }
         }
     }

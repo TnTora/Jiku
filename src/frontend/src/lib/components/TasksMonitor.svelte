@@ -5,24 +5,57 @@
     const task_context = getTasksContext();
     let show_tasks = $state(false);
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
+
+    let finished_tasks = $derived(task_context.tasks_finished.fail+task_context.tasks_finished.success);
+
+    async function clearTasks() {
+        task_context.stopUploads();
+
+        try {
+            let res = await fetch("/api_bridge/books/clear_all_tasks", {
+                method: "PUT",
+            });
+        } catch (error) {
+            console.error("failed to clear tasks", error);
+        }
+
+        task_context.clearFinished();
+    }
 </script>
 
 <div class="absolute bottom-7 left-1.5 p-2 flex items-center flex-col bg-neutral-700 border-neutral-600 border rounded-md z-50">
     {#if show_tasks}
         <div class="mt-1 flex w-full justify-between items-center gap-2">
             <span class="font-bold text-md">Tasks</span>
-            <button class="text-sm hover:text-sky-600 active:text-sky-500 cursor-pointer">clear all</button>
-            <button class="mx-2 hover:text-red-700 active:text-red-500 hover:cursor-pointer" style="grid-area:close" title="Hide Tasks" onclick={() => { show_tasks = false; }}>
+
+            <button
+                class="text-sm hover:text-sky-600 active:text-sky-500 cursor-pointer"
+                title="Clear All Tasks"
+                onclick={clearTasks}
+            >
+                clear all
+            </button>
+
+            <button
+                class="mx-2 hover:text-red-700 active:text-red-500 hover:cursor-pointer"
+                style="grid-area:close"
+                title="Hide Tasks"
+                onclick={() => { show_tasks = false; }}
+            >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6" viewBox="0 0 15 15">
                     <path fill="currentColor" d="M3.64 2.27L7.5 6.13l3.84-3.84A.92.92 0 0 1 12 2a1 1 0 0 1 1 1a.9.9 0 0 1-.27.66L8.84 7.5l3.89 3.89A.9.9 0 0 1 13 12a1 1 0 0 1-1 1a.92.92 0 0 1-.69-.27L7.5 8.87l-3.85 3.85A.92.92 0 0 1 3 13a1 1 0 0 1-1-1a.9.9 0 0 1 .27-.66L6.16 7.5L2.27 3.61A.9.9 0 0 1 2 3a1 1 0 0 1 1-1c.24.003.47.1.64.27" />
                 </svg>
             </button>
         </div>
+
         <div class="mt-2 max-h-[min(30rem,calc(100vh-3rem))] overflow-y-scroll flex p-2 flex-col gap-1">
             {#each task_context.tasks as [task_id, task]}
                 <TaskItem {task} />
             {/each}
         </div>
+
+        <p class="mt-2 text-xs">{finished_tasks}/{task_context.tasks.size} ( <span class="text-emerald-500">{task_context.tasks_finished.success}</span> | <span class="text-rose-500">{task_context.tasks_finished.fail}</span> )</p>
+
     {:else}
         <button class="{btn_shared_classes}" style="grid-area:close" title="Show Tasks" onclick={() => { show_tasks = true; }}>
             <svg class="h-3 w-3 aspect-square" xmlns="http://www.w3.org/2000/svg" width="1.28em" height="1em" viewBox="0 0 1792 1408">
