@@ -178,3 +178,14 @@ class Book(Base):
     def creators(self) -> list[str]:
         print(f"{self.creators_ = }")
         return [creator.name for creator in self.creators_]
+
+    @property
+    def progress_percent(self) -> int:
+        if self.progress_status == "new":
+            return 0
+        if self.progress_status == "completed":
+            return 100
+        if self.last_pos and self.last_pos.tok_pos:
+            return min(98, int(self.last_pos.tok_pos/self.total_tokens*100))
+        return 1
+

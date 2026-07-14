@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
@@ -77,11 +77,21 @@ class BookRespone(BaseModel):
 
 
 class BookInfoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     creators: list[str] = []
     thumb: str | None = None
     static_url: str
+    progress_percent: int
+
+
+class BookKnownStats(BaseModel):
+    total: int
+    unique: int
+    total_known: int
+    unique_known: int
 
 
 class CollectionCreate(BaseModel):
@@ -120,6 +130,13 @@ class BookProgressStatusUpdate(BaseModel):
     new_status: str
 
 
-class CollectionBookCreate(BaseModel):
+class CollectionBookBase(BaseModel):
     book_id: int
     collection_id: int
+
+
+class CollectionBookCreate(CollectionBookBase):
+    ...
+
+class CollectionBookRemove(CollectionBookBase):
+    ...

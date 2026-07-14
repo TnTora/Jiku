@@ -5,7 +5,7 @@
 
 <a href="{`/books/${item.id}`}" class="h-full w-full">
     <div
-        class="book-item border border-neutral-600 active:border-neutral-400 active:border-2 bg-neutral-700 w-full h-full rounded-lg overflow-hidden cursor-pointer"
+        class="relative book-item border border-neutral-600 active:border-neutral-400 active:border-2 bg-neutral-700 w-full h-full rounded-lg overflow-hidden cursor-pointer"
         style="{item.thumb? `background-image: url(${item.static_url}/${item.id}/images/${item.thumb});`: ""}"
     >
         <div class="relative h-full flex flex-col justify-between {item.thumb? "opacity-0 hover:opacity-100": ""} transition-opacity duration-100">
@@ -19,7 +19,8 @@
                 {/each}
             </div>
         </div>
-        
+
+        <div class="absolute bottom-0 left-0 h-1 bg-sky-600" style="width:{item.progress_percent}%"></div>
     </div>
 </a>
 

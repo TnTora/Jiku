@@ -8,7 +8,7 @@
     import OptionPanel from "./OptionPanel.svelte";
     import SidePanel from "./SidePanel.svelte";
     import BookRender from "./BookRender.svelte";
-	import { goto } from "$app/navigation";
+	import { goto, invalidateAll } from "$app/navigation";
 	import TextInputPopup from "$lib/components/TextInputPopup.svelte";
 	import { browser } from "$app/environment";
 	import ConfirmationPopup from "$lib/components/ConfirmationPopup.svelte";
@@ -503,6 +503,7 @@
                 });
                 throw error;
             }
+            invalidateAll();
         }
     }
 

@@ -3,7 +3,7 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi import APIRouter, status, Depends, HTTPException
 
 from api.db import get_db
-from api.db.models.core import Morpheme, Option
+from api.db.models.core import Morpheme, Option, AnkiNoteMorpheme, AnkiNote, KnownStatus
 
 from api.schemas.core import KnownMorphemes
 from api.core.anki import get_decks, get_note_types, get_all_note_types_fields, update_morphemes_db, AnkiError
@@ -26,13 +26,19 @@ router = APIRouter()
 def get_knonw_morphemes(db: Annotated[Session, Depends(get_db)]):
     lemmas = db.execute(
         select(func.count(distinct(Morpheme.lemma)))
+        .join(AnkiNoteMorpheme, Morpheme.inflection == AnkiNoteMorpheme.morph_inflection)
+        .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
+        .where(AnkiNote.status == KnownStatus.KNOWN.value)
     ).scalar()
 
     if lemmas is None:
         lemmas = 0
 
     inflections = db.execute(
-        select(func.count(Morpheme.inflection))
+        select(func.count(distinct(Morpheme.inflection)))
+        .join(AnkiNoteMorpheme, Morpheme.inflection == AnkiNoteMorpheme.morph_inflection)
+        .join(AnkiNote, AnkiNote.nid == AnkiNoteMorpheme.note_id)
+        .where(AnkiNote.status == KnownStatus.KNOWN.value)
     ).scalar()
 
     if inflections is None:

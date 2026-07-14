@@ -15,33 +15,12 @@
 
     let { items, selecting = $bindable(false), selected = $bindable(new SvelteSet()), item_min_w = null }: Props<any> = $props();
 
-    async function deleteBook(book_id: number) {
-        try {
-            const res = await fetch(`/api_bridge/books/delete_book/${book_id}`, {
-                method: "DELETE",
-            });
-            items = items.filter( e => e.id != book_id);
-        } catch (error) {
-            console.error(`Error deleting book ${book_id}`, error);
-            errors.push({
-                short: `Error deleting book ${book_id}`,
-                details: error,
-            });
-            throw error;
-        }
-    }
-
 </script>
 
 
 <GridDisplay {items} bind:selecting={selecting} bind:selected={selected} {item_min_w}>
     {#snippet children(item: any)}
-        <BookGridItem
-            {item}
-            deleteBook={async () => {
-                await deleteBook(item.id);
-            }}
-        />
+        <BookGridItem {item}/>
     {/snippet}
 </GridDisplay>
 

@@ -16,10 +16,12 @@ from api.schemas.books import (
     BookProcessCancel,
     BookLastOpenUpdate,
     BookProgressStatusUpdate,
+    BookKnownStats,
+    CollectionBookRemove,
 )
 
 from api.db import get_db
-from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme
+from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme, KnownStatus
 from api.db.models.books import (
     Book,
     Section,
@@ -29,7 +31,8 @@ from api.db.models.books import (
     Creator,
     Collection,
     CreatorBook,
-    CollectionBook, BookTokenCount
+    CollectionBook,
+    BookTokenCount,
 )
 
 from api.celery_worker import celery_app
@@ -37,7 +40,7 @@ from api.core.text_analysis.ebook_processing import process_ebub
 from api.core.config import config_path, tmp_path
 from api.core.config.shared import redis_host
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, distinct
 from sqlalchemy.orm import Session
 
 import json
@@ -291,6 +294,49 @@ def get_books(  # noqa: PLR0913
     return books
 
 
+@router.get("/known_stats/{id}", response_model=BookKnownStats)
+def get_known_stats(id: int, db: Annotated[Session, Depends(get_db)]):  # noqa: A002
+    unique_book_lemmas = db.execute(
+        select(func.count(distinct(BookToken.lemma)))
+        .join(BookTokenCount, BookTokenCount.morph_inflection==BookToken.inflection)
+        .where(BookTokenCount.book_id==id)
+    ).scalar_one()
+
+    total_book_lemmas = db.execute(
+        select(func.sum(BookTokenCount.count))
+        .join(BookToken, BookTokenCount.morph_inflection==BookToken.inflection)
+        .where(BookTokenCount.book_id==id)
+    ).scalar() or 0
+
+    total_known_lemmas = db.execute(
+        select(func.sum(BookTokenCount.count))
+        .join (BookToken, BookToken.inflection==BookTokenCount.morph_inflection)
+        .where(BookTokenCount.book_id==id, BookToken.lemma.in_(
+            select(distinct(BookToken.lemma))
+            .join(AnkiNoteMorpheme, AnkiNoteMorpheme.morph_inflection==BookToken.inflection)
+            .join(AnkiNote, AnkiNote.nid==AnkiNoteMorpheme.note_id)
+            .join (BookTokenCount, BookToken.inflection==BookTokenCount.morph_inflection)
+            .where(BookTokenCount.book_id==id, AnkiNote.status==KnownStatus.KNOWN.value)
+        ))
+    ).scalar() or 0
+
+    unique_known_lemmas = db.execute(
+        select(func.count(distinct(BookToken.lemma)))
+        .join(AnkiNoteMorpheme, AnkiNoteMorpheme.morph_inflection==BookToken.inflection)
+        .join(AnkiNote, AnkiNote.nid==AnkiNoteMorpheme.note_id)
+        .join (BookTokenCount, BookToken.inflection==BookTokenCount.morph_inflection)
+        .where(BookTokenCount.book_id==id, AnkiNote.status==KnownStatus.KNOWN.value)
+    ).scalar_one()
+
+    print(f"{unique_known_lemmas = } | {unique_book_lemmas = } | {total_known_lemmas = } | {total_book_lemmas = }")
+    return {
+        "total": total_book_lemmas,
+        "unique": unique_book_lemmas,
+        "total_known": total_known_lemmas,
+        "unique_known": unique_known_lemmas,
+    }
+
+
 @router.get("/collections", response_model=list[CollectionInfoResponse])
 def get_collections(db: Annotated[Session, Depends(get_db)]):
 
@@ -346,7 +392,7 @@ def rename_collection(data: CollectionRename, db: Annotated[Session, Depends(get
     status_code=status.HTTP_201_CREATED)
 def add_book_to_collection(data: CollectionBookCreate, db: Annotated[Session, Depends(get_db)]):
     exists = db.execute(
-        select(CollectionBook).where((CollectionBook.book_id == data.book_id) & (CollectionBook.collection_id == data.collection_id))
+        select(CollectionBook).where(CollectionBook.book_id == data.book_id, CollectionBook.collection_id == data.collection_id)
     ).scalars().one_or_none()
 
     if exists:
@@ -354,6 +400,19 @@ def add_book_to_collection(data: CollectionBookCreate, db: Annotated[Session, De
 
     new_pair = CollectionBook(book_id=data.book_id, collection_id=data.collection_id)
     db.add(new_pair)
+    db.commit()
+
+
+@router.delete("/remove_from_collection", status_code=status.HTTP_204_NO_CONTENT)
+def remove_from_collection(data: CollectionBookRemove, db: Annotated[Session, Depends(get_db)]):
+    book_collection = db.execute(
+        select(CollectionBook).where(CollectionBook.book_id == data.book_id, CollectionBook.collection_id == data.collection_id)
+    ).scalars().one_or_none()
+
+    if book_collection is None:
+        raise HTTPException(status_code=status.HTTP_404_CONFLICT, detail="Book not in collection")
+
+    db.delete(book_collection)
     db.commit()
 
 

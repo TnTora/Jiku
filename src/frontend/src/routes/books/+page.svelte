@@ -12,7 +12,7 @@
 	import { goto, invalidate, invalidateAll } from "$app/navigation";
 	import { onMount } from "svelte";
 
-    import { addBookToCollection } from "./requests.js";
+    import { addBookToCollection, api_fetch } from "$lib/utils/requests";
 
     import type { SelectCollectionPopupContext } from "./context.js";
 	import { browser } from "$app/environment";
@@ -60,6 +60,7 @@
     let title_search: string = $state("");
     let status_selection: string = $state(page.url.searchParams.get("progress") ?? "");
     let order_selection: string = $state(page.url.searchParams.get("ordr") ?? "0");
+    let collection_id: number = $derived(Number(page.url.searchParams.get("collection_id")));
 
     let select_collection_popup: SelectCollectionPopupContext = $state({
         show: false,
@@ -78,25 +79,46 @@
         }
     });
 
-    async function deleteSelectedBooks() {
+
+    function deleteSelectedBooks() {
+        let tasks: Promise<void>[] = [];
         for (const book of selected) {
-
-            try {
-                const res = await fetch(`/api_bridge/books/delete_book/${book.id}`, {
+            tasks.push(api_fetch(
+                `books/delete_book/${book.id}`, {
                     method: "DELETE",
-                });
-            } catch (error) {
-                console.error(`Failed deleting book ${book.title}`, error);
-                errors.push({
-                    short: "Failed deleting collection",
-                    details: error,
-                });
-                throw error;
-            }
-
+                }, {
+                    err_msg: `Failed to delete book ${book.id}`,
+                    err_context: errors,
+                }
+            ));
         }
+        Promise.allSettled(tasks)
+        .then(invalidateAll);
+    }
 
-        invalidateAll();
+
+    function removeSelectedBooksFromCollection() {
+        let tasks: Promise<void>[] = [];
+        for (const book of selected) {
+            tasks.push(
+                api_fetch("books/remove_from_collection", {
+                    method: "DELETE",
+                    headers: {
+                        "accept": "application/json",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        book_id: book.id,
+                        collection_id: collection_id
+                    }),
+                }, {
+                    err_msg: "Failed to remove book from collection",
+                    err_context: errors
+                })
+            );
+        }
+        Promise.allSettled(tasks)
+        .then(invalidateAll);
     }
 
 
@@ -265,13 +287,9 @@
                 onclick={() => {
                     if (selected.size == 0) { return; }
 
-                    confirmation_popup.onOk = async () => {
-                        try {
-                            await deleteSelectedBooks();
-                            selecting = false;
-                        } catch (error) {
-                            console.error(error.message);
-                        }
+                    confirmation_popup.onOk =  () => {
+                        deleteSelectedBooks();
+                        selecting = false;
                     }
                     confirmation_popup.text = `Delete ${selected.size} books?`
                     confirmation_popup.show = true;
@@ -280,28 +298,55 @@
             >
                 Delete
             </button>
-            <button
-                title="Add to Collection"
-                class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
-                onclick={() => {
-                    if (selected.size == 0) { return; }
+            
+            {#if collection_id}
+                <button
+                    title="Remove from Collection"
+                    class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                    onclick={() => {
+                        if (selected.size == 0) { return; }
 
-                    select_collection_popup.onOk = (collection_id:number) => {
-                        let task: Array<Promise<void>> = []
-                        console.log("adding")
-                        for (const book of selected) {
-                            console.log(book);
-                            task.push(addBookToCollection(book.id, errors)(collection_id));
+                        confirmation_popup.onOk =  () => {
+                            removeSelectedBooksFromCollection();
+                            selecting = false;
                         }
-                        Promise.allSettled(task)
-                        .then(() => selecting = false)
-                    }
-                    select_collection_popup.show = true;
-                    
-                }}
-            >
-                Add to Collection
-            </button>
+                        confirmation_popup.text = `Remove ${selected.size} books from current collection?`
+                        confirmation_popup.show = true;
+                    }}
+                >
+                    Remove from Collection
+                </button>
+            {:else}
+                <button
+                    title="Add to Collection"
+                    class="hover:text-sky-700 active:text-sky-500 hover:cursor-pointer"
+                    onclick={() => {
+                        if (selected.size == 0) { return; }
+
+                        select_collection_popup.onOk = (collection_id:number) => {
+                            let task: Array<Promise<void>> = []
+                            console.log("adding")
+                            for (const book of selected) {
+                                console.log(book);
+                                task.push(
+                                    addBookToCollection({
+                                        book_id: book.id,
+                                        collection_id: collection_id,
+                                        errors: errors,
+                                    })
+                                );
+                            }
+                            Promise.allSettled(task)
+                            .then(() => selecting = false)
+                        }
+                        select_collection_popup.show = true;
+                        
+                    }}
+                >
+                    Add to Collection
+                </button>
+            {/if}
+
         {/if}
         </div>
         <div class="flex items-center justify-end gap-3">
