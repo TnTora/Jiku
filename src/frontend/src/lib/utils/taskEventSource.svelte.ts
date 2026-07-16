@@ -242,14 +242,19 @@ export class SyncMorphsEventSource {
     disconnect() {
         this.src?.close();
         this.src = null;
-        this.sync_task = null;
+        // this.sync_task = null;
     }
 
     handleMessage(event: MessageEvent) {
         const data: TaskProgress<SyncMorphsProgress> = JSON.parse(event.data);
         console.log(data);
-        if (this.sync_task && data.result) {
-            this.sync_task.progress = data.result;
+        if (this.sync_task) {
+            this.sync_task.status = data.status;
+
+            if (data.result) {
+                this.sync_task.progress = data.result;
+            }
+
         } else {
             let tmp_progress: SyncMorphsProgress;
 
