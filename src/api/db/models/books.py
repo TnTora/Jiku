@@ -176,7 +176,6 @@ class Book(Base):
 
     @property
     def creators(self) -> list[str]:
-        print(f"{self.creators_ = }")
         return [creator.name for creator in self.creators_]
 
     @property

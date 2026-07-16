@@ -32,7 +32,6 @@ class BookmarkRename(BaseModel):
 class BookMetadata(BaseModel):
     title: str
     authors: list[str] = []
-    # last_modified: datetime = Field(default_factory=datetime.now)
     raw: dict
 
 
