@@ -2,6 +2,7 @@
     import { getJikuErrorsContext, getTextInputPopupContext, getConfirmationPopupContext } from "$lib/utils/context";
     import { page } from "$app/state";
 	import { goto } from "$app/navigation";
+	import { api_fetch } from "$lib/utils/requests";
 
     const errors = getJikuErrorsContext();
     const confirmation_popup = getConfirmationPopupContext();
@@ -29,7 +30,7 @@
         let name = text_input_popup.text_input_value;
 
         try {
-            let res = await fetch("/api_bridge/books/add_collection/", {
+            let res = await api_fetch("books/add_collection/", {
                 method: "POST",
                 headers: {
                     "accept": "application/json",
@@ -38,14 +39,12 @@
                 body: JSON.stringify({
                     name: name
                 })
+            }, {
+                err_msg: "Failed to add new collection",
+                err_context: errors,
             });
             new_collection = await res.json();
         } catch (error) {
-            console.error("Failed to add new collection", error);
-            errors.push({
-                short: "Failed to add new collection",
-                details: error,
-            });
             throw error;
         }
 
@@ -59,8 +58,7 @@
     async function renameCollection(collection_id:number) {
         let name = text_input_popup.text_input_value;
 
-        try {
-            let res = await fetch("/api_bridge/books/rename_collection/", {
+        await api_fetch("books/rename_collection", {
                 method: "PUT",
                 headers: {
                     "accept": "application/json",
@@ -70,31 +68,20 @@
                     id: collection_id,
                     name: name
                 })
-            });
-        } catch (error) {
-            console.error("Failed to rename collection", error);
-            errors.push({
-                short: "Failed to rename collection",
-                details: error,
-            });
-            throw error;
-        }
+            }, {
+                err_msg: "Failed to rename collection",
+                err_context: errors
+        });
     }
 
 
     async function deleteCollection(collection_id: number) {
-        try {
-            const res = await fetch(`/api_bridge/books/delete_collection/${collection_id}`, {
+        await api_fetch(`books/delete_collection/${collection_id}`, {
                 method: "DELETE",
-            });
-        } catch (error) {
-            console.error("Failed deleting collection", error);
-            errors.push({
-                short: "Failed deleting collection",
-                details: error,
-            });
-            throw error;
-        }
+            }, {
+                err_msg: "Failed deleting collection",
+                err_context: errors,
+            })
     }
 
 </script>

@@ -7,6 +7,7 @@
     import TopBar from "./TopBar.svelte";
     import OptionPanel from "./OptionPanel.svelte";
 	import { goto, invalidateAll } from "$app/navigation";
+	import { api_fetch } from "$lib/utils/requests.js";
 
     let { data } = $props();
     let lines = $derived(data.lines);
@@ -102,7 +103,7 @@
 
     async function processNewLine(new_line: string) {
         try {
-            const res = await fetch("/api_bridge/texthooker/new_line", {
+            const res = await api_fetch("texthooker/new_line", {
                 method: "POST",
                 headers: {
                     "accept": "application/json",
@@ -112,6 +113,9 @@
                     text: new_line,
                     preset: preset_name,
                 })
+                }, {
+                    err_msg: "Failed to fetch new line",
+                    err_context: errors,
             });
 
             let { id, tokens, line_status_map } = await res.json();
@@ -119,45 +123,28 @@
             status_map = {...status_map, ...line_status_map};
             return {id, tokens};
         } catch (error) {
-            console.error("Error fetching new line: ", error);
-            errors.push({
-                short: "Error fetching new line",
-                details: error,
-            });
             throw error;
         }
 
     }
 
     async function deleteLine(line_id: number) {
-        try {
-            const res = await fetch(`/api_bridge/texthooker/line/${line_id}`, {
+        await api_fetch(`texthooker/line/${line_id}`, {
                 method: "DELETE",
-            });
-        } catch (error) {
-            console.error("Error deleting line: ", error);
-            errors.push({
-                short: "Error deleting line",
-                details: error,
-            });
-            throw error;
-        }
-
+            }, {
+                err_msg: "Failed to delete line",
+                err_context: errors
+        });
     }
 
     async function clearAllLines() {
-        try {
-            const res = await fetch(`/api_bridge/texthooker/clear_lines/${preset_name}`, {
+        await api_fetch(`texthooker/clear_lines/${preset_name}`, {
                 method: "DELETE",
-            });
-        } catch (error) {
-            console.error("Error clearing lines: ", error);
-            errors.push({
-                short: "Error clearing lines",
-                details: error,
-            });
-            throw error;
-        }
+            }, {
+                err_msg: "Failed to clear lines",
+                err_context: errors,
+        });
+        
         invalidateAll();
         new_lines = [];
 

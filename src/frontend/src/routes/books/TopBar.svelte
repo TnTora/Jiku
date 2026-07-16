@@ -31,6 +31,8 @@
                 () => { task.status = "FAILED"}
             )
         }
+
+        task_context.show_tasks = true;
     }
 
 </script>

@@ -4,6 +4,7 @@
     import BookCarousel from "$lib/components/BookCarousel.svelte";
 	import { getJikuErrorsContext, getTextInputPopupContext } from "$lib/utils/context.js";
 	import { invalidateAll } from "$app/navigation";
+	import { api_fetch } from "$lib/utils/requests";
 
     let { data } = $props();
     let btn_shared = "bg-neutral-700 hover:bg-neutral-900 active:bg-neutral-950 cursor-pointer";
@@ -76,8 +77,6 @@
             return;
         }
 
-
-
         presets.push(preset_name);
 
         let new_preset = {
@@ -91,23 +90,19 @@
             name: preset_name,
             ws_url: new_preset.websocket_url
         });
+
+        adding_preset = false;
     }
 
     async function deletePreset(name: string) {
         if (!presets.includes(name)) { return; }
 
-        try {
-            const res = await fetch(`/api_bridge/texthooker/clear_lines/${name}`, {
-                method: "DELETE",
-            });
-        } catch (error) {
-            console.error("Error clearing lines: ", error);
-            errors.push({
-                short: "Error clearing lines",
-                details: error,
-            });
-            throw error;
-        }
+        await api_fetch(`texthooker/clear_lines/${name}`, {
+            method: "DELETE"
+        }, {
+            err_msg: "Error clearing lines",
+            err_context: errors
+        })
 
         presets = presets.filter(item => item != name);
         presets_name_ws = presets_name_ws.filter(item => item.name != name);
@@ -125,26 +120,20 @@
             return;
         }
 
-        try {
-            let res = await fetch("/api_bridge/texthooker/rename_preset/", {
-                method: "PUT",
-                headers: {
-                    "accept": "application/json",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    old_name: old_name,
-                    new_name: new_name,
-                })
-            });
-        } catch (error) {
-            console.error("Failed to rename preset", error);
-            errors.push({
-                short: "Failed to rename preset",
-                details: error,
-            });
-            throw error;
-        }
+        await api_fetch("texthooker/rename_preset", {
+            method: "PUT",
+            headers: {
+                "accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                old_name: old_name,
+                new_name: new_name,
+            })
+        }, {
+            err_msg: "Failed to rename preset",
+            err_context: errors
+        });
 
         for (let i=0; i < presets.length; i++) {
             if (presets[i] == old_name) {
@@ -198,17 +187,19 @@
         }
 
         try {
-            const res = await fetch("/api_bridge/options/anki_settings",{
-                method: "PUT",
-                headers: {
-                    "accept": "application/json",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(new_settings)
+            await api_fetch("options/anki_settings", {
+                    method: "PUT",
+                    headers: {
+                        "accept": "application/json",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(new_settings)
+                }, {
+                    err_msg: "Failed to update Anki settings"
             });
-
+            alert("Anki settings updated");
         } catch (error) {
-            alert(error);
+            throw error;
         }
     }
 

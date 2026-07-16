@@ -2,6 +2,8 @@
     import { clickOutside } from "$lib/utils/clickOutside";
     import { fly } from "svelte/transition";
     import { getTextInputPopupContext, getConfirmationPopupContext, getJikuErrorsContext } from "$lib/utils/context";
+	import { api_fetch } from "$lib/utils/requests";
+	import { invalidateAll } from "$app/navigation";
 
     let { book, onoutsideclick, updatePosition } = $props();
 
@@ -17,41 +19,34 @@
         let name = text_input_popup.text_input_value;
 
         try {
-            let res = await fetch("/api_bridge/books/rename_bookmark/", {
-                method: "PUT",
-                headers: {
-                    "accept": "application/json",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    id: bookmark_id,
-                    name: name
-                })
+            await api_fetch("books/rename_bookmark/", {
+                    method: "PUT",
+                    headers: {
+                        "accept": "application/json",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        id: bookmark_id,
+                        name: name
+                    })
+                }, {
+                    err_msg: "Failed to rename bookmark",
+                    err_context: errors
             });
         } catch (error) {
-            console.error("Failed to rename bookmark", error);
-            errors.push({
-                short: "Failed to rename bookmark",
-                details: error,
-            });
             throw error;
         }
     }
 
 
     async function deleteBookmark(bookmark_id: number) {
-        try {
-            const res = await fetch(`/api_bridge/books/delete_bookmark/${bookmark_id}`, {
+        await api_fetch(`books/delete_bookmark/${bookmark_id}`, {
                 method: "DELETE",
-            });
-        } catch (error) {
-            console.error("Failed deleting bookmark", error);
-            errors.push({
-                short: "Failed deleting bookmark",
-                details: error,
-            });
-            throw error;
-        }
+            }, {
+                err_msg: "Failed deleting bookmark",
+                err_context: errors
+        });
+        invalidateAll();
     }
 
 </script>
@@ -122,7 +117,8 @@
 
                                     try {
                                         await renameBookmark(entry.id)
-                                        entry.name = text_input_popup.text_input_value;
+                                        // entry.name = text_input_popup.text_input_value;
+                                        invalidateAll();
                                     } catch (error) {
                                         console.error(error);
                                     }

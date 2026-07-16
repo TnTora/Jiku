@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { api_fetch } from "$lib/utils/requests";
     import { getSyncTasksContext } from "$lib/utils/taskEventSource.svelte";
 
     let { known_morphemes } = $props()
@@ -19,7 +20,7 @@
             progress: tmp_progress,
             status: "WAITING",
         };
-        const res = await fetch("/api_bridge/anki/sync_morphemes", {
+        await api_fetch("anki/sync_morphemes", {
             method: "PUT"
         });
     }

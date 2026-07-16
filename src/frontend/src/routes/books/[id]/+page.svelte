@@ -12,6 +12,7 @@
 	import TextInputPopup from "$lib/components/TextInputPopup.svelte";
 	import { browser } from "$app/environment";
 	import ConfirmationPopup from "$lib/components/ConfirmationPopup.svelte";
+	import { api_fetch } from "$lib/utils/requests.js";
 
     let { data } = $props();
     let { book, status_map } = $derived(data);
@@ -358,7 +359,7 @@
         let new_bookmark;
 
         try {
-            const res = await fetch("/api_bridge/books/add_bookmark", {
+            const res = await api_fetch("books/add_bookmark", {
                 method: "POST",
                 headers: {
                     "accept": "application/json",
@@ -371,15 +372,12 @@
                     section: curr_section,
                     tok_pos: bookmark_selection,
                 })
+                }, {
+                    err_msg: "Failed to add Bookmark",
+                    err_context: errors,
             });
-
             new_bookmark = await res.json();
         } catch (error) {
-            console.error("Failed to add Bookmark", error);
-            errors.push({
-                short: "Failed to add Bookmark",
-                details: error,
-            });
             throw error;
         }
 
@@ -394,8 +392,7 @@
     }
 
     async function setBookCompleted() {
-        try {
-            const res = await fetch("/api_bridge/books/set_progress_status", {
+        await api_fetch("books/set_progress_status", {
                 method: "PUT",
                 headers: {
                     "accept": "application/json",
@@ -405,15 +402,11 @@
                     id: book.id,
                     new_status: "completed",
                 })
-            });
-        } catch (error) {
-            console.error("Failed to set book as completed", error);
-            errors.push({
-                short: "Failed to set book as completed",
-                details: error,
-            });
-            throw error;
-        }
+            }, {
+                err_msg: "Failed to set book as completed",
+                err_context: errors,
+        });
+
         show_completion_confirmation = false;
     }
 
@@ -479,10 +472,11 @@
 
 
     async function handleClose() {
+        console.log(page_first_token_span);
         if (page_first_token_span) {
             let tok_position = page_first_token_span.getAttribute("data-tok");
-            try {
-                const res = await fetch("/api_bridge/books/update_last_pos", {
+            
+            await api_fetch("books/update_last_pos", {
                     method: "PUT",
                     headers: {
                         "accept": "application/json",
@@ -494,15 +488,11 @@
                         tok_pos: tok_position,
                     }),
                     keepalive: true
-                });
-            } catch (error) {
-                console.error(`Failed to update book ${book.id} last_pos: `, error);
-                errors.push({
-                    short: `Failed to update book ${book.id} last_pos: `,
-                    details: error,
-                });
-                throw error;
-            }
+                }, {
+                    err_msg: `Failed to update book ${book.id} last_pos: `,
+                    err_context: errors,
+            });
+
             invalidateAll();
         }
     }
@@ -527,7 +517,7 @@
 
 
     async function update_last_open() {
-        console.log(`updating: ${book.id}`);
+        console.log(`updating last opened: ${book.id}`);
         await fetch(`/api_bridge/books/update_last_opened`, {
             method: "PUT",
             headers: {

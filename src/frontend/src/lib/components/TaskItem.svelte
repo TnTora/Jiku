@@ -11,23 +11,6 @@
     let { task }: Props = $props();
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 
-    // async function closeTask() {
-    //     if (task.status == "SUCCESS" || task.status == "FAILURE") {
-    //         task_context.removeTask(task.id);
-    //         return;
-    //     }
-
-    //     const res = await fetch("/api_bridge/books/stop_book_processing", {
-    //         method:"PUT",
-    //         headers: {
-    //             "accept": "application/json",
-    //             "Content-Type": "application/json",
-    //         },
-    //         body: JSON.stringify({
-    //             id: task.id
-    //         }),
-    //     });
-    // }
 </script>
 
 <div id={task.id} class="item-grid p-1 bg-neutral-600 rounded-md">

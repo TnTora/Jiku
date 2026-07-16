@@ -1,6 +1,5 @@
 export const load = async ({ url, fetch }) => {
     let res = await fetch(`/api_bridge/books/books_info?${url.searchParams.toString()}`);
-	console.log(res);
     let books = await res.json();
     res = await fetch(`/api_bridge/books/collections`);
 	let collections = await res.json();

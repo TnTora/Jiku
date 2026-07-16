@@ -17,6 +17,7 @@ export async function api_fetch(
 
     try {
         let res = await fetch(`/api_bridge/${url}`, fetch_params);
+        // console.log(res);
         if (!res.ok) {
             console.error(`Error: ${err_params.err_msg}`);
             if (err_params.err_context) {
@@ -25,6 +26,7 @@ export async function api_fetch(
                 });
             }
         }
+        return res;
     } catch (error) {
         console.error(`Error: ${err_params.err_msg}`, error);
         if (err_params.err_context) {

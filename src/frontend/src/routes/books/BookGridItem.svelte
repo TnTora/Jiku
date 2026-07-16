@@ -34,8 +34,7 @@
     async function updateStatus() {
         if (!select_value) { return; }
 
-        try {
-            await fetch("/api_bridge/books/set_progress_status", {
+        await api_fetch("books/set_progress_status", {
                 method: "PUT",
                 headers: {
                     "accept": "application/json",
@@ -45,10 +44,10 @@
                     id: item.id,
                     new_status: select_value,
                 })
-            });
-        } catch (error) {
-            console.error(error);
-        }
+            }, {
+                err_msg: "Failed to updated progress status",
+                err_context: errors,
+        });
 
         invalidateAll();
         show_status_change = false;
@@ -57,26 +56,16 @@
     }
 
     async function loadKnownStats() {
-        try {
-            const res = await fetch(`/api_bridge/books/known_stats/${item.id}`)
-            if (!res.ok) {
-                errors.push({
-                    short: "Failed to load Known Stats"
-                });
-            }
-            const data = await res.json();
-            return data;
-        } catch (error) {
-            console.error(error);
-            errors.push({
-                short: "Failed to load Known Stats"
-            });
-            throw error;
-        }
+        const res = await api_fetch(`books/known_stats/${item.id}`, {}, {
+            err_msg: "Failed to load Known Stats",
+            err_context: errors
+        });
+        const data = await res.json();
+        return data;
     }
 
     async function deleteBook(book_id: number) {
-        api_fetch(
+        await api_fetch(
             `books/delete_book/${book_id}`, {
                 method: "DELETE",
             }, {

@@ -32,6 +32,7 @@ export class TaskEventSource {
     src: EventSource | null = null;
     tasks: SvelteMap<string, Task>;
     tasks_finished;
+    show_tasks: boolean = $state(false);
 
     constructor(url: string) {
         this.url = url;
