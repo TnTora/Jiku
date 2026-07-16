@@ -124,6 +124,11 @@ def process_ebub(self, source: PathLike | BinaryIO, filename: str) -> None:
         spine: list[str] = [section_name for section_name, linear in book.spine if linear]
         total_steps = len(spine) + 4 # Generate metadata, Write files, store tokens, process toc
         current_step = 0
+
+        if self.is_aborted():
+            self.update_state(state="CANCELLED", meta={"current": -1, "total": -1})
+            return
+
         self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
 
 
@@ -170,6 +175,11 @@ def process_ebub(self, source: PathLike | BinaryIO, filename: str) -> None:
                 creator_id=creator.id,
             ))
 
+        if self.is_aborted():
+            cleanup_aborted_epub(book_id, db)
+            self.update_state(state="CANCELLED", meta={"current": -1, "total": -1})
+            return
+
         current_step += 1
         self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
 
@@ -196,6 +206,11 @@ def process_ebub(self, source: PathLike | BinaryIO, filename: str) -> None:
 
             filename = Path(stylesheet.get_name()).name
             process_stylesheet(base_path / "stylesheets" / filename, stylesheet.get_content())
+
+        if self.is_aborted():
+            cleanup_aborted_epub(book_id, db)
+            self.update_state(state="CANCELLED", meta={"current": -1, "total": -1})
+            return
 
         current_step += 1
         self.update_state(state="PROGRESS", meta={"current": current_step, "total": total_steps})
