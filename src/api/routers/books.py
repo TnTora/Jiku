@@ -101,7 +101,7 @@ def get_section_content(book_id: int, section_name: str, db: Annotated[Session, 
 
 
 def calculate_progress_status(curr_token: int, total_tokens: int) -> str:
-    PERCENTAGE_THRESHOLD = 5
+    PERCENTAGE_THRESHOLD = 3
     READING_THRESHOLD_FIXED = 1500
     READING_THRESHOLD_PERCENTAGE = PERCENTAGE_THRESHOLD*total_tokens/100
 
@@ -146,6 +146,7 @@ def update_last_pos(pos_update: BookLastPosUpdate, db: Annotated[Session, Depend
         return
 
     if book.progress_status == "completed":
+        db.commit()
         return
 
     new_status = calculate_progress_status(pos_update.tok_pos, book.total_tokens)
@@ -519,7 +520,7 @@ async def tasks_events():
         while True:
             print("waiting for message...")
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=30)
-            # print(message)
+            print(message)
 
             if not active_tasks_ids and (datetime.now(UTC)-last_message > timedelta(seconds=30)):
                 break
