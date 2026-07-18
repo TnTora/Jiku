@@ -2,7 +2,7 @@
     import GridDisplay from "$lib/components/GridDisplay.svelte";
     import BookGridItem from "./BookGridItem.svelte";
     import { SvelteSet } from "svelte/reactivity";
-    import { getJikuErrorsContext } from "$lib/utils/context";
+    import { getJikuErrorsContext } from "$lib/utils/context.svelte";
 
     const errors = getJikuErrorsContext();
 

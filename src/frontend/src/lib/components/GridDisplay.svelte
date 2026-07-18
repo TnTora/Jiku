@@ -1,6 +1,6 @@
 <script lang="ts">
     import { SvelteSet } from "svelte/reactivity";
-    import { getJikuErrorsContext } from "$lib/utils/context";
+    import { getJikuErrorsContext } from "$lib/utils/context.svelte";
 
     const errors = getJikuErrorsContext();
 

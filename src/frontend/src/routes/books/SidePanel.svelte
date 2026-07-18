@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getJikuErrorsContext, getTextInputPopupContext, getConfirmationPopupContext } from "$lib/utils/context";
+    import { getJikuErrorsContext, getTextInputPopupContext, getConfirmationPopupContext } from "$lib/utils/context.svelte";
     import { page } from "$app/state";
 	import { goto } from "$app/navigation";
 	import { api_fetch } from "$lib/utils/requests";

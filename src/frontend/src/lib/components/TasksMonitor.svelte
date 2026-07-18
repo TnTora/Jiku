@@ -2,7 +2,7 @@
     import TaskItem from "./TaskItem.svelte";
     import { getTasksContext } from "$lib/utils/taskEventSource.svelte";
 	import { api_fetch } from "$lib/utils/requests";
-	import { getJikuErrorsContext } from "$lib/utils/context";
+	import { getJikuErrorsContext } from "$lib/utils/context.svelte";
 
     const task_context = getTasksContext();
     // let show_tasks = $state(false);

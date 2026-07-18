@@ -2,7 +2,7 @@
     import { browser } from "$app/environment";
     import KnownBar from "$lib/components/KnownBar.svelte";
     import BookCarousel from "$lib/components/BookCarousel.svelte";
-	import { getJikuErrorsContext, getTextInputPopupContext } from "$lib/utils/context.js";
+	import { getJikuErrorsContext, getTextInputPopupContext } from "$lib/utils/context.svelte.js";
 	import { invalidateAll } from "$app/navigation";
 	import { api_fetch } from "$lib/utils/requests";
 
@@ -195,12 +195,11 @@
                     },
                     body: JSON.stringify(new_settings)
                 }, {
-                    err_msg: "Failed to update Anki settings"
+                    err_msg: "Failed to update Anki settings",
+                    err_context: errors,
             });
             alert("Anki settings updated");
-        } catch (error) {
-            throw error;
-        }
+        } catch (error) {}
     }
 
 

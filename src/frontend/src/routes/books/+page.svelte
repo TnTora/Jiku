@@ -6,8 +6,8 @@
     import TopBar from "./TopBar.svelte";
     import SidePanel from "./SidePanel.svelte";
     import SelectCollection from "./SelectCollection.svelte";
-    import { getJikuErrorsContext } from "$lib/utils/context";
-    import { getConfirmationPopupContext } from "$lib/utils/context";
+    import { getJikuErrorsContext } from "$lib/utils/context.svelte.js";
+    import { getConfirmationPopupContext } from "$lib/utils/context.svelte.js";
     import { setSelectColelctionPopupContext } from "./context.js";
 	import { goto, invalidate, invalidateAll } from "$app/navigation";
 	import { onMount } from "svelte";

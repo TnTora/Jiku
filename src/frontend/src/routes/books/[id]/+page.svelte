@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { tick } from "svelte";
-    import { getJikuErrorsContext } from "$lib/utils/context.js";
+    import { getJikuErrorsContext } from "$lib/utils/context.svelte.js";
     import { setEbookReaderOptionsContext } from "./context";
     import { clickOutside } from "$lib/utils/clickOutside.js";
 	import TopBar from "./TopBar.svelte";

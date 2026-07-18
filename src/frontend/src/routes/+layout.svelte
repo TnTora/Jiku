@@ -2,12 +2,12 @@
 	import './layout.css';
 	import { browser } from '$app/environment';
 	import favicon from '$lib/assets/favicon.svg';
-	import { setJikuErrorsContext } from '$lib/utils/context';
-	import { setConfirmationPopupContext, setTextInputPopupContext } from '$lib/utils/context';
+	import { setJikuErrorsContext } from '$lib/utils/context.svelte';
+	import { setConfirmationPopupContext, setTextInputPopupContext } from '$lib/utils/context.svelte';
 	import ErrorBox from '$lib/components/ErrorBox.svelte';
 	import ConfirmationPopup from '$lib/components/ConfirmationPopup.svelte';
 	import TextInputPopup from '$lib/components/TextInputPopup.svelte';
-	import type { ConfirmationPopupContext, TextInputPopupContext } from '$lib/utils/context';
+	import type { ConfirmationPopupContext, TextInputPopupContext } from '$lib/utils/context.svelte';
 	import { setTasksContext, setSyncTaskContext } from '$lib/utils/taskEventSource.svelte';
 	import { onMount } from 'svelte';
 	import TasksMonitor from '$lib/components/TasksMonitor.svelte';
@@ -33,9 +33,8 @@
 		}
 	}
 
-	// let test_errors = [{short: "test1", details:"test message 1"}, {short: "test2", details:"test message 2"}];
-	let errors = $state([]);
-	setJikuErrorsContext(errors);
+
+	const errors_context = setJikuErrorsContext();
 	const task_context = setTasksContext("/api_bridge/books/tasks_events");
 
 	const sync_task_context = setSyncTaskContext("/api_bridge/anki/sync_status");
@@ -100,7 +99,7 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-<ErrorBox {errors} />
+<ErrorBox/>
 
 {#if confirmation_popup.show}
 	<ConfirmationPopup

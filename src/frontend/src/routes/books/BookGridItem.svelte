@@ -1,8 +1,8 @@
 <script lang="ts">
     import { clickOutside } from "$lib/utils/clickOutside";
-    import { getConfirmationPopupContext } from "$lib/utils/context";
+    import { getConfirmationPopupContext } from "$lib/utils/context.svelte";
     import { getSelectCollectionPopupContext } from "./context";
-    import { getJikuErrorsContext } from "$lib/utils/context";
+    import { getJikuErrorsContext } from "$lib/utils/context.svelte";
 
     import { addBookToCollection, api_fetch, removeBookFromCollection } from "$lib/utils/requests";
 	import CenteredPopup from "$lib/components/CenteredPopup.svelte";

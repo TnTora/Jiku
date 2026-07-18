@@ -1,7 +1,7 @@
 <script lang="ts">
     import { browser } from "$app/environment";
     import { page } from "$app/state";
-    import { getJikuErrorsContext } from "$lib/utils/context.js";
+    import { getJikuErrorsContext } from "$lib/utils/context.svelte.js";
     import { setTextHookerOptionsContext } from "./context.js";
     import TexthookerLine from "$lib/components/TexthookerLine.svelte";
     import TopBar from "./TopBar.svelte";

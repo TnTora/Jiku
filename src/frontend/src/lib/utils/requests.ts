@@ -1,8 +1,8 @@
-import type { JikuError } from "$lib/utils/context";
+import type { JikuError, JikuErrorsContext } from "$lib/utils/context.svelte";
 
 interface ErrorParams {
     err_msg: string,
-    err_context?: JikuError[],
+    err_context?: JikuErrorsContext,
 }
 
 
@@ -19,20 +19,20 @@ export async function api_fetch(
         let res = await fetch(`/api_bridge/${url}`, fetch_params);
         // console.log(res);
         if (!res.ok) {
-            console.error(`Error: ${err_params.err_msg}`);
-            if (err_params.err_context) {
-                err_params.err_context.push({
-                    short: err_params.err_msg,
-                });
-            }
+            // console.error(`Error: ${err_params.err_msg}`);
+            // if (err_params.err_context) {
+            //     err_params.err_context.push({
+            //         short: err_params.err_msg,
+            //     });
+            // }
+            throw new Error(`api_fetch failed`);
         }
         return res;
     } catch (error) {
         console.error(`Error: ${err_params.err_msg}`, error);
         if (err_params.err_context) {
             err_params.err_context.push({
-                short: err_params.err_msg,
-                details: error,
+                short: err_params.err_msg
             });
         }
         throw error;
@@ -42,7 +42,7 @@ export async function api_fetch(
 
 export async function addBookToCollection(
     {book_id, collection_id, errors}:
-    {book_id: number, collection_id: number, errors: Array<JikuError>}
+    {book_id: number, collection_id: number, errors: JikuErrorsContext}
 ) {
     api_fetch("books/add_book_to_collection", {
         method: "POST",
@@ -63,7 +63,7 @@ export async function addBookToCollection(
 
 export async function removeBookFromCollection(
     {book_id, collection_id, errors}:
-    {book_id: number, collection_id: number, errors: Array<JikuError>}
+    {book_id: number, collection_id: number, errors: JikuErrorsContext}
 ) {
     await api_fetch("books/remove_from_collection", {
         method: "DELETE",

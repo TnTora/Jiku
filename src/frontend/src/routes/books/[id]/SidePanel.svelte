@@ -1,7 +1,7 @@
 <script lang="ts">
     import { clickOutside } from "$lib/utils/clickOutside";
     import { fly } from "svelte/transition";
-    import { getTextInputPopupContext, getConfirmationPopupContext, getJikuErrorsContext } from "$lib/utils/context";
+    import { getTextInputPopupContext, getConfirmationPopupContext, getJikuErrorsContext } from "$lib/utils/context.svelte";
 	import { api_fetch } from "$lib/utils/requests";
 	import { invalidateAll } from "$app/navigation";
 
