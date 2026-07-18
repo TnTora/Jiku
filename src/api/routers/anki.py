@@ -1,3 +1,4 @@
+from celery.contrib.abortable import AbortableAsyncResult
 from api.core.config.anki import AnkiInfo
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi import APIRouter, status, Depends, HTTPException
@@ -104,22 +105,24 @@ def sync_morphemes():
 @router.put("/stop_morphemes_sync")
 def stop_morphemes_sync():
     if syncing_morphs_id:
-        result = update_morphemes_db.AsyncResult(syncing_morphs_id)
+        result: AbortableAsyncResult = update_morphemes_db.AsyncResult(syncing_morphs_id)
         result.abort()
 
 
 @router.get("/sync_status", response_class=EventSourceResponse)
 async def sync_status():
-    global syncing_morphs_id
+    global syncing_morphs_id  # noqa: PLW0603
 
     print("sync_events")
     async with redis.Redis(host=redis_host, port=6379, db=1, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
         await pubsub.subscribe("__keyevent@1__:set")
 
         if syncing_morphs_id:
+            result: AbortableAsyncResult = update_morphemes_db.AsyncResult(syncing_morphs_id)
+            progress = result.result if result.state == "PROGRESS" else None
             task = {
-                "status": "WAITING",
-                "result": None,
+                "status": result.state,
+                "result": progress,
                 "traceback": None,
                 "children": None,
                 "date_done": None,
