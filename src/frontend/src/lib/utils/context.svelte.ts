@@ -8,32 +8,46 @@ export interface JikuError {
 
 export class JikuErrorsContext {
     errors: JikuError[];
-    interval: ReturnType<typeof setInterval> | null;
+    show_all: boolean;
+    timeout: ReturnType<typeof setTimeout> | null;
     binded_callback: () => void;
 
     constructor(errors: JikuError[] = []) {
         this.errors = $state(errors);
-        this.interval = null;
+        this.show_all = $state(false);
+        this.timeout = null;
         this.binded_callback = this.mousemoveCallback.bind(this)
     }
 
-    addInterval() {
-        this.interval = setInterval(() => {
+    addTimeout() {
+        this.timeout = setTimeout(() => {
             this.errors.length = 0;
-            this.interval = null;
+            this.timeout = null;
+            this.show_all = false;
+            console.log("cleared errors");
         }, 5000);
+    }
+
+    clearTimeout() {
+        if (this.timeout === null) { return; }
+
+        clearTimeout(this.timeout);
+        this.timeout = null;
     }
 
     mousemoveCallback() {
         document.removeEventListener("mousemove", this.binded_callback);
-        this.addInterval();
+        this.addTimeout();
     }
 
     push(error: JikuError) {
         this.errors.push(error);
-        if (this.interval) {
-            clearInterval(this.interval);
-            this.addInterval();
+
+        if (this.show_all) { return; }
+
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.addTimeout();
         } else {
             document.addEventListener("mousemove", this.binded_callback);
         }

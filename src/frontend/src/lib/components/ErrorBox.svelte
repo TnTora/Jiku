@@ -6,7 +6,7 @@
     const errors_context = getJikuErrorsContext();
 
     let hover_options: boolean = $state(false);
-    let show_all: boolean = $state(false);
+    // let show_all: boolean = $state(false);
 
     function onclick () {
         errors_context.errors.pop();
@@ -15,16 +15,21 @@
 </script>
 
 {#if errors_context.errors.length > 0}
-    {#if show_all}
+    {#if errors_context.show_all}
         <div class="w-screen h-screen fixed top-0 left-0 bg-neutral-800/90 z-49"></div>
     {/if}
 
     <div
         class="min-w-2xs max-w-[500px] fixed top-3 z-50 left-[50%] -translate-x-[50%]"
         role="presentation"
-        onmouseleave={() => { hover_options = false;}}
+        onmouseleave={() => {
+            if (errors_context.show_all) { return; }
+
+            hover_options = false;
+            errors_context.addTimeout();
+        }}
     >
-        {#if show_all}
+        {#if errors_context.show_all}
             <div
                 class="scroll-box max-h-[75vh] py-3 overflow-y-scroll flex flex-col gap-3 justify-between"
                 {@attach (element) => {
@@ -41,7 +46,10 @@
             <div 
                 class="min-h-12 py-2 bg-red-500 border border-red-300 rounded-3xl text-white grid grid-cols-[1fr_auto_1fr] grid-rows-[1fr_auto_1fr] items-center gap-x-1.5"
                 role="presentation"
-                onmouseenter={() => { hover_options = true; }}
+                onmouseenter={() => {
+                    hover_options = true;
+                    errors_context.clearTimeout()
+                }}
             >
                 <div class="row-span-full col-start-1 flex">
                     <div class="ml-3 px-2 bg-red-300 min-w-6 rounded-full">{errors_context.errors.length}</div>
@@ -74,17 +82,23 @@
             </button>
         {/snippet}
 
-        {#if show_all}
+        {#if errors_context.show_all}
             <div class="mt-3 flex justify-center items-center gap-4 text-xs">
-                {@render hover_button("Hide", () => { show_all = false;})}
+                {@render hover_button("Hide", () => {
+                    errors_context.show_all = false;
+                    errors_context.addTimeout();
+                })}
                 {@render hover_button("Close all", () => {
-                    show_all = false;
+                    errors_context.show_all = false;
                     errors_context.errors.length = 0;
                 })}
             </div>
         {:else if hover_options}
             <div class="mt-0.75 pb-2 flex justify-center items-center gap-4 text-xs">
-                {@render hover_button("Show all", () => { show_all = true;})}
+                {@render hover_button("Show all", () => {
+                    errors_context.clearTimeout()
+                    errors_context.show_all = true;
+                })}
                 {@render hover_button("Close all", () => { errors_context.errors.length = 0; })}
             </div>
         {/if}
