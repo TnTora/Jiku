@@ -197,7 +197,9 @@
 
     function toggleWebSocket() {
         if (!options.websocket_url) {
-            // TODO: inform user that no websocket is found in options.
+            errors.push({
+                short: "No WebSocket URL set in options"
+            });
             return;
         };
 
@@ -224,8 +226,8 @@
                 console.error('WS error: ', err);
                 errors.push({
                     short: "WebSocket Error",
-                    details: err,
                 });
+                ws = null;
             });
 
         } else {
