@@ -39,7 +39,7 @@
             </div>
         {:else}
             <div 
-                class=" min-h-12 py-2 bg-red-500 border border-red-300 rounded-3xl text-white grid grid-cols-[1fr_auto_1fr] grid-rows-[1fr_auto_1fr] items-center gap-x-1.5"
+                class="min-h-12 py-2 bg-red-500 border border-red-300 rounded-3xl text-white grid grid-cols-[1fr_auto_1fr] grid-rows-[1fr_auto_1fr] items-center gap-x-1.5"
                 role="presentation"
                 onmouseenter={() => { hover_options = true; }}
             >

@@ -29,7 +29,7 @@
 
 <div class="flex items-center bg-sky-500 w-fit rounded-b-md">
     <button
-        class="bg-sky-600 hover:bg-sky-700 active:bg-sky-800 cursor-pointer px-2 py-1 rounded-bl-md"
+        class="h-full bg-sky-600 hover:bg-sky-700 active:bg-sky-800 cursor-pointer px-2 py-1 rounded-bl-md"
         title="Sync Morphs"
         onclick={startSync}    
     >
