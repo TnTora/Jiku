@@ -11,9 +11,11 @@ class LineBase(BaseModel):
     text: str
     tokens: list[Morpheme]
 
+
 class LineCreate(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
     preset: str | None = Field(min_length=1, max_length=100)
+
 
 class LineResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -24,11 +26,25 @@ class LineResponse(BaseModel):
     tokens: list[Morpheme]
     line_status_map: dict[str, KnownStatus]
 
+
 class LastSessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     lines: list[LineBase]
     status_map: dict[str, KnownStatus]
+
+
+class PresetInfo(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    ws_url: str = Field(min_length=1, max_length=100)
+
+
+class PresetCreate(PresetInfo):
+    ...
+
+
+class PresetUpdate(PresetInfo):
+    ...
 
 
 class PresetRename(BaseModel):

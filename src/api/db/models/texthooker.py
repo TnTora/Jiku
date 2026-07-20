@@ -52,3 +52,10 @@ class LineToken(Base):
     tag: Mapped[str] = mapped_column(String, nullable=True)
 
     lines_association: Mapped[list[LineLineToken]] = relationship(back_populates="token")
+
+
+class Preset(Base):
+    __tablename__ = "presets"
+
+    name: Mapped[str] = mapped_column(String, primary_key=True)
+    ws_url: Mapped[str] = mapped_column(String, nullable=False)

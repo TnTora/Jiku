@@ -10,5 +10,11 @@ export const load = async ({ fetch }) => {
     res = await fetch("/api_bridge/anki/anki_decks_info");
     const anki_info = await res.json();
     console.log(anki_info);
-	return { anki_settings, books, known_morphemes, anki_info };
+    res = await fetch("/api_bridge/texthooker/presets");
+    const presets = await res.json();
+    console.log(presets);
+    res = await fetch("/api_bridge/texthooker/presets_info");
+    const presets_info = await res.json();
+    console.log(presets_info);
+	return { anki_settings, books, known_morphemes, anki_info, presets, presets_info };
 };

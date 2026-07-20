@@ -17,55 +17,25 @@
         ws_url: string,
     }
 
-    let presets: string[] = $state([]);
-    let presets_name_ws: PresetInfo[] = $state([]);
+    // let presets: string[] = $state([]);
+    let presets_name_ws: PresetInfo[] = $state(data.presets_info);
     let adding_preset: boolean = $state(false);
     let preset_base = {
         font_size: 22,
+        line_height: 1.75,
         vertical: false,
     };
 
     let anki_port: number = $state(data.anki_settings.port);
-    // let anki_decks: string[] = $state([]);
-    // let anki_note_types: string[] = $state([]);
     let rules = $state(data.anki_settings.to_analyze);
 
-    $effect(() => {
-        console.log(rules);
-        console.log(data.books);
-    });
-
-    if (browser) {
-        presets = JSON.parse(localStorage.getItem("texthooker_presets")?? "[]");
-        for (const preset_name of presets) {
-            const stored = localStorage.getItem(`texthooker_preset_${preset_name}`);
-            if (stored) {
-                const preset = JSON.parse(stored);
-                presets_name_ws.push({
-                    name: preset_name,
-                    ws_url: preset.websocket_url
-                })
-            }
-        }
-
-        // anki_decks = JSON.parse(localStorage.getItem("anki_decks")?? "[]");
-        // anki_note_types = JSON.parse(localStorage.getItem("anki_note_types")?? "[]");
-    }
-
-    $effect(() => {
-        if (presets) {
-            localStorage.setItem("texthooker_presets", JSON.stringify(presets));
-        }
-    });
-
-    function addPreset() {
+    async function addPreset() {
         let preset_name = (document.querySelector("input[name='preset-name']") as HTMLInputElement)?.value;
         let preset_ws = (document.querySelector("input[name='preset-ws']") as HTMLInputElement)?.value;
         
-        if (!preset_name || presets.includes(preset_name)) {
+        if (!preset_name || data.presets.includes(preset_name)) {
             errors.push({
                 short: "Invalid name",
-                details: "name empty or already used"
             })
             return;
         }
@@ -77,11 +47,27 @@
             return;
         }
 
-        presets.push(preset_name);
+        await api_fetch("texthooker/add_preset", {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                name: preset_name,
+                ws_url: preset_ws,
+            })
+        }, {
+            err_msg: "Failed to add preset",
+            err_context: errors,
+        })
+
+        // presets.push(preset_name);
 
         let new_preset = {
             websocket_url: preset_ws,
             font_size: preset_base.font_size,
+            line_height: preset_base.line_height,
             vertical: preset_base.vertical,
         }
         localStorage.setItem(`texthooker_preset_${preset_name}`, JSON.stringify(new_preset));
@@ -90,29 +76,36 @@
             name: preset_name,
             ws_url: new_preset.websocket_url
         });
-
+        invalidateAll();
         adding_preset = false;
     }
 
     async function deletePreset(name: string) {
-        if (!presets.includes(name)) { return; }
+        if (!data.presets.includes(name)) { return; }
+
+        await api_fetch(`texthooker/delete_preset/${name}`, {
+            method: "DELETE"
+        }, {
+            err_msg: "Failed to delete preset",
+            err_context: errors,
+        })
 
         await api_fetch(`texthooker/clear_lines/${name}`, {
             method: "DELETE"
         }, {
-            err_msg: "Error clearing lines",
+            err_msg: "Falied to clear lines",
             err_context: errors
         })
 
-        presets = presets.filter(item => item != name);
         presets_name_ws = presets_name_ws.filter(item => item.name != name);
         localStorage.removeItem(`texthooker_preset_${name}`);
+        invalidateAll();
     }
 
     async function renamePreset(old_name:string) {
         let new_name = text_input_popup.text_input_value;
 
-        if (!new_name || presets.includes(new_name)) {
+        if (!new_name || data.presets.includes(new_name)) {
             errors.push({
                 short: "Invalid name",
                 details: "name empty or already used"
@@ -135,13 +128,6 @@
             err_context: errors
         });
 
-        for (let i=0; i < presets.length; i++) {
-            if (presets[i] == old_name) {
-                presets[i] = new_name;
-                break;
-            }
-        }
-
         const stored = localStorage.getItem(`texthooker_preset_${old_name}`);
         if (!stored) { return; }
         localStorage.setItem(`texthooker_preset_${new_name}`, stored);
@@ -152,6 +138,7 @@
                 item.name = new_name;
             }
         })
+        invalidateAll();
     }
 
     async function loadAnkiData() {
@@ -171,14 +158,6 @@
         }
     }
 
-    // function get_fields(note_type: string) {
-    //     if (browser) {
-    //         return JSON.parse(localStorage.getItem(`anki_note_type_${note_type}`)?? "[]");
-    //     } else {
-    //         return [];
-    //     }
-        
-    // }
 
     async function updateAnkiSettings() {
         const new_settings = {

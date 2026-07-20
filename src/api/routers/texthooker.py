@@ -1,14 +1,14 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
-from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse, PresetRename
+from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse, PresetRename, PresetCreate, PresetInfo, PresetUpdate
 
 from api.db import get_db
 
 from sqlalchemy import select, delete, distinct, func, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
-from api.db.models.texthooker import Line, LineLineToken, LineToken
+from api.db.models.texthooker import Line, LineLineToken, LineToken, Preset
 from api.db.models.core import AnkiNoteMorpheme, AnkiNote, Morpheme
 
 from typing import Annotated
@@ -138,13 +138,113 @@ def clear_lines(preset:str, db: Annotated[Session, Depends(get_db)]):
     db.commit()
 
 
+@router.get("/presets", response_model=list[str])
+def get_presets(db:Annotated[Session, Depends(get_db)]):
+    presets = db.execute(
+        select(Preset.name)
+    ).scalars().all()
+
+    if not presets:
+        default_preset = Preset(
+            name="Default",
+            ws_url="ws://localhost:6677"
+        )
+        db.add(default_preset)
+        db.commit()
+        return ["Default"]
+
+    return presets
+
+
+@router.get("/presets_info", response_model=list[PresetInfo])
+def get_presets_info(db:Annotated[Session, Depends(get_db)]):
+    presets = db.execute(
+        select(Preset)
+    ).scalars().all()
+
+    if not presets:
+        default_preset = Preset(
+            name="Default",
+            ws_url="ws://localhost:6677"
+        )
+        db.add(default_preset)
+        db.commit()
+        return [default_preset]
+
+    return presets
+
+
+@router.get("/preset_info/{name}", response_model=list[PresetInfo])
+def get_preset_info(name: str, db:Annotated[Session, Depends(get_db)]):
+    preset = db.execute(
+        select(Preset).where(Preset.name == name)
+    ).scalar()
+
+    if not preset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Preset not found")
+
+    return preset
+
+
+@router.put("/update_preset")
+def update_preset(data: PresetUpdate, db:Annotated[Session, Depends(get_db)]):
+    preset = db.execute(
+        select(Preset).where(Preset.name==data.name)
+    ).scalar()
+
+    if preset is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Preset not found")
+
+    preset.ws_url = data.ws_url
+    db.commit()
+
+
+@router.post("/add_preset")
+def add_preset(data: PresetCreate, db:Annotated[Session, Depends(get_db)]):
+    preset = db.execute(
+        select(Preset).where(Preset.name==data.name)
+    ).scalar()
+
+    if preset:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{data.name} preset already exists")
+
+    new_preset = Preset(
+        name=data.name,
+        ws_url=data.ws_url
+    )
+    db.add(new_preset)
+    db.commit()
+
+
 @router.put("/rename_preset")
 def rename_preset(data: PresetRename, db:Annotated[Session, Depends(get_db)]):
+    preset = db.execute(
+        select(Preset).where(Preset.name==data.old_name)
+    ).scalar()
+
+    if preset is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Preset not found")
+
+    preset.name = data.new_name
+
     db.execute(
         update(Line)
         .where(Line.preset == data.old_name)
         .values(preset=data.new_name)
     )
+    db.commit()
+
+
+@router.delete("/delete_preset/{name}")
+def delete_preset(name: str, db:Annotated[Session, Depends(get_db)]):
+    preset = db.execute(
+        select(Preset).where(Preset.name==name)
+    ).scalar()
+
+    if preset is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Preset not found")
+
+    db.delete(preset)
     db.commit()
 
 #TODO: @router.put("/update_line") or patch

@@ -17,16 +17,13 @@
     let ws_connected = $state(false);
 
 
-    let preset_name: string = page.url.searchParams.get("preset")?? "";
     // svelte-ignore non_reactive_update
-    let presets = [];
+    let preset_name: string = page.url.searchParams.get("preset")?? "";
 
     if (browser) {
-        presets = JSON.parse(localStorage.getItem("texthooker_presets")?? "[]");
-        console.log(presets);
-        if ((presets.length > 0 && !preset_name) || !presets.includes(preset_name)) {
-            preset_name = presets[0];
-            goto(`/texthooker?preset=${preset_name}`);
+        // svelte-ignore state_referenced_locally
+        if (!preset_name || !data.presets.includes(preset_name)) {
+            goto(`/texthooker?preset=Default`);
         }
     }
 
@@ -52,13 +49,49 @@
 
     let options = $state(loadOptions(preset_name));
 
+
     $effect(() => {
-        console.log(options);
-        if (preset_name) {
-            console.log("update local storage");
+        // console.log(options);
+        if (preset_name && options.websocket_url) {
+            console.log(`update local storage: texthooker_preset_${preset_name}`);
             localStorage.setItem(`texthooker_preset_${preset_name}`, JSON.stringify(options));
         }
     });
+
+
+    async function updateWS() {
+        await api_fetch("texthooker/update_preset", {
+            method: "PUT",
+            headers: {
+                "accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                name: preset_name,
+                ws_url: options.websocket_url
+            })
+        }, {
+            err_msg: "Failed to update preset",
+            err_context: errors,
+        });
+        console.log("ws_url updated in db");
+    }
+
+
+    let ws_update: ReturnType<typeof setTimeout> | undefined;
+
+
+    $effect(() => {
+        if (options.websocket_url) {
+            if (ws_update === undefined) {
+                ws_update = setTimeout(updateWS, 1000);
+            } else {
+                clearTimeout(ws_update);
+                ws_update = setTimeout(updateWS, 1000);
+            }
+        }
+    });
+
 
     setTextHookerOptionsContext(options);
 
@@ -206,7 +239,7 @@
 <TopBar {toggleWebSocket} {ws_connected} {clearAllLines} toggleOptions={() => {show_options = !show_options}}/>
 
 {#if show_options}
-    <OptionPanel {presets} bind:preset_name={preset_name} onoutsideclick={() => {show_options = false}}/>
+    <OptionPanel presets={data.presets} bind:preset_name={preset_name} onoutsideclick={() => {show_options = false}}/>
 {/if}
 
 <div class="fixed bottom-1 left-[50%] -translate-x-[50%] z-9 flex items-center justify-between gap-4 text-xs text-neutral-500 bg-neutral-800 px-2 rounded-full">
@@ -219,7 +252,7 @@
             // options = loadOptions(new_preset);
         }}
     >
-        {#each presets as preset}
+        {#each data.presets as preset}
             <option value={preset}>{preset}</option>
         {/each}
     </select>
