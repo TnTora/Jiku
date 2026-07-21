@@ -19,21 +19,22 @@ export async function api_fetch(
         let res = await fetch(`/api_bridge/${url}`, fetch_params);
         // console.log(res);
         if (!res.ok) {
-            // console.error(`Error: ${err_params.err_msg}`);
-            // if (err_params.err_context) {
-            //     err_params.err_context.push({
-            //         short: err_params.err_msg,
-            //     });
-            // }
-            throw new Error(`api_fetch failed`);
+            const err_string = JSON.stringify(await res.json());
+            throw new Error(err_string);
         }
         return res;
-    } catch (error) {
+    } catch (error: any) {
         console.error(`Error: ${err_params.err_msg}`, error);
         if (err_params.err_context) {
-            err_params.err_context.push({
+            let new_err: JikuError = {
                 short: err_params.err_msg
-            });
+            }
+
+            if (error.message) {
+                new_err.details = error.message;
+            }
+
+            err_params.err_context.push(new_err);
         }
         throw error;
     }

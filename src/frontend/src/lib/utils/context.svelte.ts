@@ -1,4 +1,3 @@
-import { browser } from "$app/env";
 import { createContext, getContext, setContext } from "svelte";
 
 export interface JikuError {
@@ -24,7 +23,6 @@ export class JikuErrorsContext {
             this.errors.length = 0;
             this.timeout = null;
             this.show_all = false;
-            console.log("cleared errors");
         }, 5000);
     }
 
@@ -64,8 +62,6 @@ export function setJikuErrorsContext(errors: JikuError[] = []) {
 export function getJikuErrorsContext() {
     return getContext<ReturnType<typeof setJikuErrorsContext>>(ERRORS_CONTEXT_KEY);
 }
-
-// export const [getJikuErrorsContext, setJikuErrorsContext] = createContext<JikuError[]>();
 
 
 export interface ConfirmationPopupContext {

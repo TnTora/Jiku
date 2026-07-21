@@ -4,6 +4,7 @@
     // let { errors } = $props();
 
     const errors_context = getJikuErrorsContext();
+    let last_err = $derived(errors_context.errors[errors_context.errors.length-1])
 
     let hover_options: boolean = $state(false);
     // let show_all: boolean = $state(false);
@@ -37,14 +38,23 @@
                 }}
             >
                 {#each errors_context.errors as error }
-                    <div class="w-full p-3 bg-red-500 border border-red-300 rounded-3xl text-white text-center">
-                        {error.short}
-                    </div>
+                    {#if error.details}
+                        <button
+                            class="w-full p-3 bg-red-500 border border-red-300 rounded-3xl text-white text-center cursor-pointer"
+                            onclick={() => { alert(error.details) }}
+                        >
+                            {error.short}
+                        </button>
+                    {:else}
+                        <div class="w-full p-3 bg-red-500 border border-red-300 rounded-3xl text-white text-center">
+                            {error.short}
+                        </div>
+                    {/if}
                 {/each}
             </div>
         {:else}
             <div 
-                class="min-h-12 py-2 bg-red-500 border border-red-300 rounded-3xl text-white grid grid-cols-[1fr_auto_1fr] grid-rows-[1fr_auto_1fr] items-center gap-x-1.5"
+                class="min-h-12 py-1 bg-red-500 border border-red-300 rounded-3xl text-white grid grid-cols-[1fr_auto_1fr] grid-rows-[1fr_auto] items-center gap-x-1.5"
                 role="presentation"
                 onmouseenter={() => {
                     hover_options = true;
@@ -54,8 +64,8 @@
                 <div class="row-span-full col-start-1 flex">
                     <div class="ml-3 px-2 bg-red-300 min-w-6 rounded-full">{errors_context.errors.length}</div>
                 </div>
-                <div class="row-[1/4] col-start-2 mx-2 text-center">
-                    <div class="text-sm ">{errors_context.errors[errors_context.errors.length-1].short?? "Error"}</div>
+                <div class="{last_err.details? "row-1": "row-span-full"} col-start-2 mx-2 text-center">
+                    <div class="text-sm ">{last_err.short?? "Error"}</div>
                 </div>
                 <div class="row-span-full col-start-3 flex justify-end">
                     <button title="Close" {onclick} class="mr-5 hover:text-neutral-700 hover:cursor-pointer">
@@ -64,10 +74,16 @@
                         </svg>
                     </button>
                 </div>
-                {#if errors_context.errors[errors_context.errors.length-1].details}
-                    <div class="row-start-2 col-start-2 text-center">{false? errors_context.errors[errors_context.errors.length-1].details: ""}</div>
-                    <div class="row-start-3 col-start-2 text-[0.5rem] h-full text-center flex flex-col justify-end ">
-                        <div class="hover:text-neutral-700 hover:cursor-pointer">Show Details</div>
+                {#if last_err.details}
+                    <div class="row-start-2 col-start-2 text-[0.5rem] h-full text-center flex flex-col justify-end ">
+                        <button
+                            class="hover:text-neutral-700 hover:cursor-pointer"
+                            onclick={() => {
+                                alert(last_err.details);
+                            }}
+                        >
+                            Show Details
+                        </button>
                     </div>
                 {/if}
             </div>

@@ -142,20 +142,13 @@
     }
 
     async function loadAnkiData() {
-        try {
-            const res = await fetch("/api_bridge/anki/update_anki_decks_info",{
-                method: "PUT",
-            });            
-            if (res.ok) {
-                invalidateAll();
-                // TODO: create custom info message
-                alert("Anki info updated");
-            } else {
-                alert(JSON.stringify(await res.json()));
-            }
-        } catch (error) {
-            alert(error);
-        }
+        const res = await api_fetch("anki/update_anki_decks_info", {
+            method: "PUT",
+        }, {
+            err_msg: "Failed to update anki info",
+            err_context: errors,
+        });
+        alert("Anki info updated");
     }
 
 
@@ -165,20 +158,20 @@
             to_analyze: rules
         }
 
-        try {
-            await api_fetch("options/anki_settings", {
-                    method: "PUT",
-                    headers: {
-                        "accept": "application/json",
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(new_settings)
-                }, {
-                    err_msg: "Failed to update Anki settings",
-                    err_context: errors,
-            });
-            alert("Anki settings updated");
-        } catch (error) {}
+        await api_fetch("options/anki_settings", {
+                method: "PUT",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(new_settings)
+            }, {
+                err_msg: "Failed to update Anki settings",
+                err_context: errors,
+        });
+
+        alert("Anki settings updated");
+
     }
 
 
