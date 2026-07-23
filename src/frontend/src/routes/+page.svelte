@@ -175,6 +175,7 @@
         });
 
         alert("Anki settings updated");
+        invalidateAll();
 
     }
 
