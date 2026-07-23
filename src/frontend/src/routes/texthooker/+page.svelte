@@ -8,6 +8,8 @@
     import OptionPanel from "./OptionPanel.svelte";
 	import { goto, invalidateAll } from "$app/navigation";
 	import { api_fetch } from "$lib/utils/requests.js";
+	import { stringify } from "querystring";
+	import type { LineCreate, LineResponse, PresetUpdate } from "$lib/api_types/texthooker.js";
 
     let { data } = $props();
     let lines = $derived(data.lines);
@@ -69,7 +71,7 @@
             body: JSON.stringify({
                 name: preset_name,
                 ws_url: options.websocket_url
-            })
+            } as PresetUpdate)
         }, {
             err_msg: "Failed to update preset",
             err_context: errors,
@@ -145,13 +147,13 @@
                 body: JSON.stringify({
                     text: new_line,
                     preset: preset_name,
-                })
+                } as LineCreate)
                 }, {
                     err_msg: "Failed to fetch new line",
                     err_context: errors,
             });
 
-            let { id, tokens, line_status_map } = await res.json();
+            let { id, tokens, line_status_map } = <LineResponse> await res.json();
             // console.log(tokens);
             status_map = {...status_map, ...line_status_map};
             return {id, tokens};

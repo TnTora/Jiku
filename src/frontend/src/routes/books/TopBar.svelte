@@ -5,9 +5,14 @@
     let task_context = getTasksContext();
     let formElement: HTMLFormElement;
 
-    console.log(task_context);
+    // console.log(task_context);
 
-    let { toggleSidePanel, show_side_panel=$bindable() } = $props();
+    interface Props {
+        toggleSidePanel: () => void,
+        show_side_panel: boolean
+    }
+
+    let { toggleSidePanel, show_side_panel=$bindable() }: Props = $props();
     let btn_shared_classes = "hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 
     function handleFilesInput (this: HTMLInputElement) {

@@ -1,4 +1,4 @@
-from api.core.config.anki import AnkiSettings, AnkiInfo
+from api.schemas.core import AnkiSettings, AnkiInfo
 from api.db import SessionLocal
 from api.db.models.core import Option
 

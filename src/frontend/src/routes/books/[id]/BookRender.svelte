@@ -1,6 +1,12 @@
 <script lang="ts">
     import { tick } from "svelte";
-    let { content, onUpdateCallback} = $props();
+
+    interface Props {
+        content: string,
+        onUpdateCallback: () => void
+    }
+
+    let { content , onUpdateCallback}: Props = $props();
 
     $effect.pre(() => {
         if (!content) { return };

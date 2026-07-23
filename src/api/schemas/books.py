@@ -31,13 +31,13 @@ class BookmarkRename(BaseModel):
 
 class BookMetadata(BaseModel):
     title: str
-    authors: list[str] = []
+    authors: list[str]
     raw: dict
 
 
 class Section(BaseModel):
     key: str
-    number: int = -1
+    number: int
     stylesheets: list[str]
     filename: str
     start_ch: int
@@ -48,26 +48,25 @@ class Book(BaseModel):
     id: int
 
     title: str
-    creators_names: list[str] = []
     raw_metadata: dict | None
 
     sections: dict[str, Section]
     stylesheets: list[str]
     spine: list[str]
-    toc: list[TocItem] = []
-    bookmarks: list[BookmarkResponse] = []
+    toc: list[TocItem]
+    bookmarks: list[BookmarkResponse]
 
-    thumb: str | None = None
+    thumb: str | None
     original_file: str
     static_url: str
 
-    total_char: int = Field(ge=0, default=0)
-    total_tokens: int = Field(ge=0, default=0)
+    total_char: int
+    total_tokens: int
 
     date_added: datetime
-    last_opened: datetime = datetime.min
+    last_opened: datetime
 
-    last_pos: BookPosition | None = None
+    last_pos: BookPosition | None
 
 
 class BookRespone(BaseModel):

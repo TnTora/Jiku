@@ -2,12 +2,18 @@
     import { getTextHookerOptionsContext } from "./context";
     import { clickOutside } from "$lib/utils/clickOutside.js";
     import SelectOption from "$lib/components/SelectOption.svelte";
-	import { goto } from "$app/navigation";
-    let { onoutsideclick, presets, preset_name = $bindable() } = $props();
+
+    interface Props {
+        onoutsideclick: () => void,
+        presets: string[],
+        preset_name: string,
+    }
+
+    let { onoutsideclick, presets, preset_name = $bindable() }: Props = $props();
     let options = getTextHookerOptionsContext();
 </script>
 
-<div use:clickOutside={"button[title=Options]"} {onoutsideclick} class="w-[25rem] max-w-screen grid grid-cols-2 items-center justify-between gap-2 px-4 py-4 fixed top-13 right-3 z-9 bg-mist-800 border-mist-900 border rounded-xl">
+<div use:clickOutside={"button[title=Options]"} {onoutsideclick} class="w-100 max-w-screen grid grid-cols-2 items-center justify-between gap-2 px-4 py-4 fixed top-13 right-3 z-9 bg-mist-800 border-mist-900 border rounded-xl">
     
     <h2 class="col-span-2 text-xl font-bold mt-4" style="margin-top:0;">Main</h2>
     
@@ -54,7 +60,7 @@
 </div>
 
 <style>
-    label, span {
+    label {
         width: fit-content;
         margin-left:0.5rem;
     }

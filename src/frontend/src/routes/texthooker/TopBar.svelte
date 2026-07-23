@@ -1,5 +1,13 @@
 <script lang="ts">
-    let { toggleWebSocket, ws_connected, toggleOptions, clearAllLines } = $props();
+
+    interface Props {
+        ws_connected: boolean,
+        toggleWebSocket: () => void,
+        toggleOptions: () => void,
+        clearAllLines: () => void,
+    }
+
+    let { toggleWebSocket, ws_connected, toggleOptions, clearAllLines }: Props = $props();
     let ws_conn_color = $derived(ws_connected? "text-green-500": "text-red-500");
     let btn_shared_classes = "mr-3 hover:text-sky-700 active:text-sky-500 hover:cursor-pointer";
 

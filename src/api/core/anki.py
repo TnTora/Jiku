@@ -6,11 +6,10 @@ from os import getenv
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
 from api.core.config import load_settings_from_db
-from api.core.config.anki import AnkiSettings
+from api.schemas.core import AnkiSettings
 from api.db import SessionLocal
 from api.db.models.core import Morpheme, AnkiNote, AnkiNoteMorpheme, KnownStatus, Option
 
-from datetime import datetime
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 

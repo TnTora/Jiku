@@ -1,9 +1,8 @@
 import json
-from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, status, Depends
 
 from api.core.config import load_settings_from_db
-from api.core.config.anki import AnkiSettings
-from api.core.anki import anki_settings
+from api.schemas.core import AnkiSettings
 from api.db import get_db
 from api.db.models.core import Option
 

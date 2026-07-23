@@ -3,22 +3,28 @@
     import { page } from "$app/state";
 	import { goto } from "$app/navigation";
 	import { api_fetch } from "$lib/utils/requests";
+	import type { CollectionCreate, CollectionInfoResponse, CollectionRename, CreatorInfoRespone } from "$lib/api_types/books";
 
     const errors = getJikuErrorsContext();
     const confirmation_popup = getConfirmationPopupContext();
     const text_input_popup = getTextInputPopupContext();
 
 
-    let collections_test = [];
+    // let collections_test = [];
 
-    for (let i=0; i < 20; i++) {
-        collections_test.push({
-            id: i,
-            name: `Collection ${i+1}`
-        });
+    // for (let i=0; i < 20; i++) {
+    //     collections_test.push({
+    //         id: i,
+    //         name: `Collection ${i+1}`
+    //     });
+    // }
+
+    interface Props {
+        collections: CollectionInfoResponse[],
+        creators: CreatorInfoRespone[]
     }
 
-    let { collections, creators } = $props();
+    let { collections, creators }: Props = $props();
 
     let tab: "collections" | "authors" = $state("collections");
 
@@ -26,7 +32,7 @@
 
 
     async function addCollection() {
-        let new_collection;
+        let new_collection: CollectionInfoResponse;
         let name = text_input_popup.text_input_value;
 
         try {
@@ -38,7 +44,7 @@
                 },
                 body: JSON.stringify({
                     name: name
-                })
+                } as CollectionCreate)
             }, {
                 err_msg: "Failed to add new collection",
                 err_context: errors,
@@ -67,7 +73,7 @@
                 body: JSON.stringify({
                     id: collection_id,
                     name: name
-                })
+                } as CollectionRename)
             }, {
                 err_msg: "Failed to rename collection",
                 err_context: errors
@@ -125,7 +131,7 @@
                                 try {
                                     await renameCollection(collection.id)
                                     collection.name = text_input_popup.text_input_value;
-                                } catch (error) {
+                                } catch (error: any) {
                                     console.error(error.message);
                                 }
 
@@ -147,7 +153,7 @@
                                 try {
                                     await deleteCollection(collection.id);
                                     collections = collections.filter( e => e.id != collection.id);
-                                    if (page.url.searchParams.get("collection_id") == collection.id) {
+                                    if (page.url.searchParams.get("collection_id") == collection.id.toString()) {
                                         goto(page.url.pathname);
                                     }
                                 } catch (error) {

@@ -13,6 +13,7 @@
 	import { browser } from "$app/environment";
 	import ConfirmationPopup from "$lib/components/ConfirmationPopup.svelte";
 	import { api_fetch } from "$lib/utils/requests.js";
+	import type { BookLastPosUpdate, BookmarkCreate, BookmarkResponse, BookProgressStatusUpdate } from "$lib/api_types/books.js";
 
     let { data } = $props();
     let { book, status_map } = $derived(data);
@@ -35,7 +36,7 @@
     );
 
 
-    let content = $state("");
+    let content: string = $state("");
     let backward_load = false;
 
     function loadOptions() {
@@ -110,7 +111,9 @@
         stylesheets_elements.forEach((el) => {
             if (!el) {return};
 
-            if (book.sections[curr_section].stylesheets.includes(el.getAttribute("data-file"))) {
+            const data_file = el.getAttribute("data-file");
+
+            if (data_file && book.sections[curr_section].stylesheets.includes(data_file)) {
                 el.disabled = false;
             } else {
                 el.disabled = true;
@@ -356,7 +359,7 @@
         console.log(bookmark_selection_name);
         if (!bookmark_selection_name) { return; }
 
-        let new_bookmark;
+        let new_bookmark: BookmarkResponse;
 
         try {
             const res = await api_fetch("books/add_bookmark", {
@@ -371,7 +374,7 @@
                     preview: bookmark_selection_preview,
                     section: curr_section,
                     tok_pos: bookmark_selection,
-                })
+                } as BookmarkCreate)
                 }, {
                     err_msg: "Failed to add Bookmark",
                     err_context: errors,
@@ -401,7 +404,7 @@
                 body: JSON.stringify({
                     id: book.id,
                     new_status: "completed",
-                })
+                } as BookProgressStatusUpdate)
             }, {
                 err_msg: "Failed to set book as completed",
                 err_context: errors,
@@ -486,7 +489,7 @@
                         id: book.id,
                         section: curr_section,
                         tok_pos: tok_position,
-                    }),
+                    } as BookLastPosUpdate),
                     keepalive: true
                 }, {
                     err_msg: `Failed to update book ${book.id} last_pos: `,
@@ -581,7 +584,7 @@
             <SidePanel
                 {book}
                 onoutsideclick={() => { show_side_panel = false }} 
-                updatePosition={async (section: string, token?: number, anchor?: string) => {
+                updatePosition={async (section: string, token?: number | null, anchor?: string | null) => {
                     backward_load = false;
                     if (section != curr_section) {
                         await loadSectionContent(section);

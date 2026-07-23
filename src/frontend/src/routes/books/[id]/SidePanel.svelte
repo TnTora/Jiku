@@ -4,8 +4,15 @@
     import { getTextInputPopupContext, getConfirmationPopupContext, getJikuErrorsContext } from "$lib/utils/context.svelte";
 	import { api_fetch } from "$lib/utils/requests";
 	import { invalidateAll } from "$app/navigation";
+	import type { Book } from "$lib/api_types/books";
 
-    let { book, onoutsideclick, updatePosition } = $props();
+    interface Props {
+        book: Book,
+        onoutsideclick: () => void,
+        updatePosition: (section: string, token?: number | null, anchor?: string | null) => void
+    }
+
+    let { book, onoutsideclick, updatePosition }: Props = $props();
 
     let confirmation_popup = getConfirmationPopupContext();
     let text_input_popup = getTextInputPopupContext();

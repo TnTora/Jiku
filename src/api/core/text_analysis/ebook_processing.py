@@ -313,7 +313,7 @@ def process_stylesheet(filepath: Path, content: bytes):
 
     filepath.write_text(tinycss2.serialize(rules_new))
 
-
+# TODO: Sanitize HTML
 def process_html_content(filepath: Path, content: bytes, book_id: int, stats: BookStats) -> Section:
     soup = BeautifulSoup(content, "html.parser")
 
@@ -359,8 +359,6 @@ def process_html_content(filepath: Path, content: bytes, book_id: int, stats: Bo
             filename = Path(image["xlink:href"]).name  # ty:ignore[invalid-argument-type]
             del image["xlink:href"]
             image["href"] = f"{static_url}/static/books/{book_id}/images/{filename}"
-
-
 
     section = Section(
         book_id=book_id,

@@ -2,7 +2,20 @@
     import ConfirmationPopup from "./ConfirmationPopup.svelte";
     import { onMount } from "svelte";
 
-    let {text, onOk, onCancel, options, select_value = $bindable(null)} = $props()
+    interface Option {
+        name: string, 
+        value: any
+    }
+
+    interface Props {
+        text: string,
+        options: Option[]
+        select_value: any,
+        onOk: () => void,
+        onCancel: () => void,
+    }
+
+    let {text, onOk, onCancel, options, select_value = $bindable(null)}: Props = $props()
     let select_el: HTMLSelectElement;
 
     onMount(() => {

@@ -1,10 +1,19 @@
-<script lang="ts">
+<script lang="ts" generics="T">
     import { SvelteSet } from "svelte/reactivity";
     import { getJikuErrorsContext } from "$lib/utils/context.svelte";
+	import type { Snippet } from "svelte";
 
     const errors = getJikuErrorsContext();
 
-    let { items, selecting = $bindable(false), selected = $bindable(new SvelteSet()), item_min_w = null, children } = $props();
+    interface Props {
+        items: Array<T>,
+        selecting: boolean,
+        selected: SvelteSet<T>,
+        item_min_w: string | null,
+        children: Snippet<[T]>
+    }
+
+    let { items, selecting = $bindable(false), selected = $bindable(new SvelteSet()), item_min_w = null, children }: Props = $props();
 
     function onItemClickCapture(item: any) {
         return (e: Event) => {

@@ -1,10 +1,11 @@
 <script lang="ts">
-    import { browser } from "$app/environment";
     import KnownBar from "$lib/components/KnownBar.svelte";
     import BookCarousel from "$lib/components/BookCarousel.svelte";
 	import { getJikuErrorsContext, getTextInputPopupContext } from "$lib/utils/context.svelte.js";
 	import { invalidateAll } from "$app/navigation";
 	import { api_fetch } from "$lib/utils/requests";
+	import type { AnkiSettings } from "$lib/api_types/core.js";
+	import type { PresetCreate, PresetRename } from "$lib/api_types/texthooker.js";
 
     let { data } = $props();
     let btn_shared = "bg-neutral-700 hover:bg-neutral-900 active:bg-neutral-950 cursor-pointer";
@@ -18,6 +19,7 @@
     }
 
     // let presets: string[] = $state([]);
+    // svelte-ignore state_referenced_locally
     let presets_name_ws: PresetInfo[] = $state(data.presets_info);
     let adding_preset: boolean = $state(false);
     let preset_base = {
@@ -26,7 +28,9 @@
         vertical: false,
     };
 
+    // svelte-ignore state_referenced_locally
     let anki_port: number = $state(data.anki_settings.port);
+    // svelte-ignore state_referenced_locally
     let rules = $state(data.anki_settings.to_analyze);
 
     async function addPreset() {
@@ -56,7 +60,7 @@
             body: JSON.stringify({
                 name: preset_name,
                 ws_url: preset_ws,
-            })
+            } as PresetCreate)
         }, {
             err_msg: "Failed to add preset",
             err_context: errors,
@@ -122,7 +126,7 @@
             body: JSON.stringify({
                 old_name: old_name,
                 new_name: new_name,
-            })
+            } as PresetRename)
         }, {
             err_msg: "Failed to rename preset",
             err_context: errors
@@ -153,7 +157,7 @@
 
 
     async function updateAnkiSettings() {
-        const new_settings = {
+        const new_settings: AnkiSettings = {
             port: anki_port,
             to_analyze: rules
         }

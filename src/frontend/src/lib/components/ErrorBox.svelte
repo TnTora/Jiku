@@ -21,7 +21,7 @@
     {/if}
 
     <div
-        class="min-w-2xs max-w-[500px] fixed top-3 z-50 left-[50%] -translate-x-[50%]"
+        class="min-w-2xs max-w-125 fixed top-3 z-50 left-[50%] -translate-x-[50%]"
         role="presentation"
         onmouseleave={() => {
             if (errors_context.show_all) { return; }

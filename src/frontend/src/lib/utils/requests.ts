@@ -1,3 +1,4 @@
+import type { CollectionBookCreate, CollectionBookRemove } from "$lib/api_types/books";
 import type { JikuError, JikuErrorsContext } from "$lib/utils/context.svelte";
 
 interface ErrorParams {
@@ -54,7 +55,7 @@ export async function addBookToCollection(
         body: JSON.stringify({
             book_id: book_id,
             collection_id: collection_id
-        }),
+        } as CollectionBookCreate),
     }, {
         err_msg: "Failed to add book to collection",
         err_context: errors
@@ -75,7 +76,7 @@ export async function removeBookFromCollection(
         body: JSON.stringify({
             book_id: book_id,
             collection_id: collection_id
-        }),
+        } as CollectionBookRemove),
     }, {
         err_msg: "Failed to remove book from collection",
         err_context: errors

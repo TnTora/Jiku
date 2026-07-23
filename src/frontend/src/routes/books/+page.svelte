@@ -16,6 +16,7 @@
 
     import type { SelectCollectionPopupContext } from "./context.js";
 	import { browser } from "$app/environment";
+	import type { BookInfoResponse, CollectionBookRemove } from "$lib/api_types/books.js";
 
 
     let stored_params: string = "";
@@ -56,7 +57,7 @@
     let ascending_order: boolean = $derived(!(page.url.searchParams.get("asc") == "no"));
     let show_side_panel: boolean = $state(false);
     let selecting: boolean = $state(false);
-    let selected = $state(new SvelteSet());
+    let selected: SvelteSet<BookInfoResponse> = $state(new SvelteSet());
     let title_search: string = $state("");
     let status_selection: string = $state(page.url.searchParams.get("progress") ?? "");
     let order_selection: string = $state(page.url.searchParams.get("ordr") ?? "0");
@@ -81,7 +82,7 @@
 
 
     function deleteSelectedBooks() {
-        let tasks: Promise<void>[] = [];
+        let tasks: Promise<any>[] = [];
         for (const book of selected) {
             tasks.push(api_fetch(
                 `books/delete_book/${book.id}`, {
@@ -98,7 +99,7 @@
 
 
     function removeSelectedBooksFromCollection() {
-        let tasks: Promise<void>[] = [];
+        let tasks: Promise<any>[] = [];
         for (const book of selected) {
             tasks.push(
                 api_fetch("books/remove_from_collection", {
@@ -110,7 +111,7 @@
                     body: JSON.stringify({
                         book_id: book.id,
                         collection_id: collection_id
-                    }),
+                    } as CollectionBookRemove),
                 }, {
                     err_msg: "Failed to remove book from collection",
                     err_context: errors

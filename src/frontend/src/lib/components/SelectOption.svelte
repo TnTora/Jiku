@@ -1,5 +1,16 @@
 <script lang="ts">
-    let { options, selected_name = $bindable(), selected_value = $bindable() } = $props();
+    interface Option {
+        name: string,
+        value: any,
+    }
+
+    interface Props {
+        options: Option[],
+        selected_name?: string,
+        selected_value?: any,
+    }
+
+    let { options, selected_name = $bindable(), selected_value = $bindable() }: Props = $props();
     
     selected_name = options.filter((option) => option.value == selected_value)[0].name;
 

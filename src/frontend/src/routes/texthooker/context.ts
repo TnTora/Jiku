@@ -4,7 +4,7 @@ interface TextHookerOptions {
     websocket_url?: string,
     font?: string,
     font_size: number,
-    line_height?: number,
+    line_height: number,
     vertical: boolean,
 }
 

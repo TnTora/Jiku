@@ -1,5 +1,7 @@
 <script lang="ts">
-    let { item } = $props();
+	import type { BookInfoResponse } from "$lib/api_types/books";
+
+    let { item }: { item: BookInfoResponse} = $props();
 </script>
 
 

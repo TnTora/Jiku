@@ -1,7 +1,8 @@
 <script lang="ts">
+	import type { BookInfoResponse } from "$lib/api_types/books";
     import BookCarouselItem from "./BookCarouselItem.svelte";
 
-    let { books } = $props();
+    let { books }: {books: BookInfoResponse[]} = $props();
 
 </script>
 

@@ -1,15 +1,15 @@
 <script lang="ts">
-    import { getEbookReaderOptionsContext } from "./context";
+    import { getEbookReaderOptionsContext, type EbookReaderOptionsBooleanKey } from "./context";
     import Toggle from "$lib/components/Toggle.svelte";
     import SelectOption from "$lib/components/SelectOption.svelte";
     import { clickOutside } from "$lib/utils/clickOutside.js";
 
 
-    let { onoutsideclick } = $props();
+    let { onoutsideclick }: {onoutsideclick: () => void} = $props();
     let options = getEbookReaderOptionsContext();
     const header_style = "col-span-2 text-xl font-bold mt-4";
 
-    function toggleOption(option: string) {
+    function toggleOption(option: EbookReaderOptionsBooleanKey) {
         const handle = () => { options[option] = !options[option] };
         return handle;
     }
@@ -22,19 +22,9 @@
 >
     <h2 class="{header_style}" style="margin-top:0;">Layout</h2>
 
-    <!-- <span>Vertical</span>
-    <div class="toggle">
-        <Toggle option={options.vertical} title={"Vertical"} height={1.25}  onclick={toggleOption("vertical")}/>
-    </div> -->
-
     <div class="col-span-2">
         <SelectOption bind:selected_value={options.vertical} options={[{name: "Vertical", value: true}, {name: "Horizontal", value: false}]} --height="2rem" />
     </div>
-
-    <!-- <span>Paginated</span>
-    <div class="toggle">
-        <Toggle option={options.paginated} title={"Paginated"} height={1.25}  onclick={toggleOption("paginated")}/>
-    </div> -->
 
     <div class="col-span-2">
         <SelectOption bind:selected_value={options.paginated} options={[{name: "Paginated", value: true}, {name: "Scroll", value: false}]} --height="2rem" />
@@ -68,11 +58,6 @@
     <div class="toggle">
         <Toggle option={options.show_progress_tokens} title={"Show Tokens Progress"} height={1.25}  onclick={toggleOption("show_progress_tokens")}/>
     </div>
-
-    <!-- <span>Show progress just for current section</span>
-    <div class="toggle">
-        <Toggle option={options.limit_progress_to_section} title={"Show progress just for current section"} height={1.25}  onclick={toggleOption("limit_progress_to_section")}/>
-    </div> -->
 
     <div class="col-span-2">
         <SelectOption bind:selected_value={options.limit_progress_to_section} options={[{name: "Section Progress", value: true}, {name: "Book Progress", value: false}]} --height="2rem" />

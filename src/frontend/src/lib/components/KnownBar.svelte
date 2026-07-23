@@ -1,20 +1,21 @@
 <script lang="ts">
+	import type { KnownMorphemes } from "$lib/api_types/core";
 	import { api_fetch } from "$lib/utils/requests";
     import { getSyncTasksContext } from "$lib/utils/taskEventSource.svelte";
 
-    let { known_morphemes } = $props()
+    let { known_morphemes }: { known_morphemes: KnownMorphemes } = $props()
 
     let sync_task_context = getSyncTasksContext();
 
     async function startSync() {
         sync_task_context.connect();
         const tmp_progress = {
-                    current_rule_name: "",
-                    current_rule: 0,
-                    total_rules: -1,
-                    current_note: 0,
-                    total_notes: -1,
-                }
+            current_rule_name: "",
+            current_rule: 0,
+            total_rules: -1,
+            current_note: 0,
+            total_notes: -1,
+        }
         sync_task_context.sync_task = {
             id: "tmp",
             progress: tmp_progress,

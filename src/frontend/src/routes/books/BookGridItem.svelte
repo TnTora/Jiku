@@ -9,12 +9,13 @@
 	import SelectionPopup from "$lib/components/SelectionPopup.svelte";
 	import { invalidateAll } from "$app/navigation";
 	import { page } from "$app/state";
+	import type { BookInfoResponse, BookProgressStatusUpdate } from "$lib/api_types/books";
 
     const confirmation_popup = getConfirmationPopupContext();
     const select_collection_popup = getSelectCollectionPopupContext();
     const errors = getJikuErrorsContext();
 
-    let { item } = $props();
+    let { item }: { item: BookInfoResponse} = $props();
     let show_item_options = $state(false);
     let show_stats = $state(false);
     let show_status_change = $state(false);
@@ -43,7 +44,7 @@
                 body: JSON.stringify({
                     id: item.id,
                     new_status: select_value,
-                })
+                } as BookProgressStatusUpdate)
             }, {
                 err_msg: "Failed to updated progress status",
                 err_context: errors,

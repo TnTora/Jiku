@@ -1,9 +1,17 @@
 <script lang="ts">
+	import type { CollectionInfoResponse } from "$lib/api_types/books";
     import SelectionPopup from "$lib/components/SelectionPopup.svelte";
 
-    let {text, onOk, onCancel, collections, select_value = $bindable(null)} = $props()
+    interface Props {
+        text: string,
+        collections: CollectionInfoResponse[],
+        select_value: number | null,
+        onOk: () => void,
+        onCancel: () => void,
+    }
 
-    // svelte-ignore non_reactive_update
+    let {text, onOk, onCancel, collections, select_value = $bindable(null)}: Props = $props()
+
     let options = collections.map((el) => {
         return {
             name: el.name, 

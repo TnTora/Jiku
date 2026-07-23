@@ -1,5 +1,5 @@
 from celery.contrib.abortable import AbortableAsyncResult
-from api.core.config.anki import AnkiInfo
+from api.schemas.core import AnkiInfo
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi import APIRouter, status, Depends, HTTPException
 
@@ -48,7 +48,7 @@ def get_knonw_morphemes(db: Annotated[Session, Depends(get_db)]):
     return {"lemmas": lemmas, "inflections": inflections}
 
 
-@router.get("/anki_decks_info")
+@router.get("/anki_decks_info", response_model=AnkiInfo)
 def get_anki_decks_info(db: Annotated[Session, Depends(get_db)]):
     anki_info = load_settings_from_db("anki_info")
     return anki_info

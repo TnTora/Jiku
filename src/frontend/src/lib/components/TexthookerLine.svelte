@@ -1,6 +1,14 @@
 <script lang="ts">
+	import type { KnownStatus, LineBase } from "$lib/api_types/texthooker";
     import { getTextHookerOptionsContext } from "../../routes/texthooker/context";
-    let { line, status_map, delete_func } = $props()
+    
+    interface Props {
+        line: LineBase,
+        status_map: { [k:string]: KnownStatus },
+        delete_func: () => void,
+    }
+    
+    let { line, status_map, delete_func }: Props = $props()
     let options = getTextHookerOptionsContext();
 
 </script>

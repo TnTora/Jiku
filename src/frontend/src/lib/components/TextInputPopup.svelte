@@ -2,7 +2,15 @@
     import ConfirmationPopup from "./ConfirmationPopup.svelte";
     import { onMount } from "svelte";
 
-    let {text, onOk, onCancel, text_input_value = $bindable(null), text_input_default = ""} = $props()
+    interface Props {
+        text: string,
+        text_input_value: string | null,
+        text_input_default?: string,
+        onOk: () => void,
+        onCancel: () => void,
+    }
+
+    let {text, onOk, onCancel, text_input_value = $bindable(null), text_input_default = ""}: Props = $props()
 
     let input_el: HTMLInputElement;
 

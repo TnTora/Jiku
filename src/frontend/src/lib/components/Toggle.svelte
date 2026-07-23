@@ -1,4 +1,12 @@
 <script lang="ts">
+
+    interface Props {
+        option: boolean,
+        title: string,
+        height: number,
+        onclick: () => void,
+    }
+
     let { option, title, height, onclick } = $props()
 </script>
 
