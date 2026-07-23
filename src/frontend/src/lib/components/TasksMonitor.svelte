@@ -53,7 +53,7 @@
             </button>
         </div>
 
-        <div class="mt-2 max-h-[min(30rem,calc(100vh-3rem))] overflow-y-scroll flex p-2 flex-col gap-1">
+        <div class="mt-2 max-h-[min(30rem,calc(100vh-3rem))] max-w-[min(25rem,calc(100vw-3rem))]  overflow-y-scroll flex p-2 flex-col gap-1">
             {#each task_context.tasks as [task_id, task]}
                 <TaskItem {task} />
             {/each}
