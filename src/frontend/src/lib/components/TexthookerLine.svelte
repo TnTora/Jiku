@@ -10,6 +10,7 @@
     
     let { line, status_map, delete_func }: Props = $props()
     let options = getTextHookerOptionsContext();
+    let exclude_pos = new Set(["PUNCT", "SPACE", "X", "SYM", "N/A"]);
 
 </script>
 
@@ -18,7 +19,7 @@
         {#each line.tokens as word}
             {#if word.lemma in status_map}
                 <span class="relative status-underline {(status_map[word.lemma] == 1)? "known": "new"}">{word.inflection}</span>
-            {:else if (word.pos !== "PUNCT" && word.pos !== "SPACE" && word.pos !== "X")}
+            {:else if (word.pos && !exclude_pos.has(word.pos))}
                 <span class="relative status-underline unknown">{word.inflection}</span>
             {:else}
                 {word.inflection}
