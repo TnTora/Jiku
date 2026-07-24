@@ -1,4 +1,3 @@
-from celery.contrib.abortable import AbortableAsyncResult
 from api.schemas.core import AnkiInfo
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi import APIRouter, status, Depends, HTTPException
@@ -19,7 +18,10 @@ import json
 
 import redis.asyncio as redis
 
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from celery.contrib.abortable import AbortableAsyncResult
 
 router = APIRouter()
 
@@ -91,7 +93,7 @@ syncing_morphs_id = None
 
 @router.put("/sync_morphemes")
 def sync_morphemes():
-    global syncing_morphs_id
+    global syncing_morphs_id  # noqa: PLW0603
 
     if syncing_morphs_id is not None:
         result = update_morphemes_db.AsyncResult(syncing_morphs_id)

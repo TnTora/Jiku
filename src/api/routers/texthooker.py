@@ -107,7 +107,7 @@ def add_new_line(line: LineCreate, db: Annotated[Session, Depends(get_db)]):
 
 
 @router.delete("/line/{id}")
-def delete_line(id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_line(id: int, db: Annotated[Session, Depends(get_db)]):  # noqa: A002
     line = db.execute(select(Line).where(Line.id == id)).scalar()
 
     if line is None:
