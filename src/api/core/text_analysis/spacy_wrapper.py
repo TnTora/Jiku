@@ -14,6 +14,7 @@ analyzer: "SpacyAnalyzer | None" = None
 
 
 punc_sym_regex = re.compile(r"[^\w\s]+")
+punc_sym_regex_exact = re.compile(r"^[^\w\s]+$")
 periods_regex = re.compile(r"(。|\.)")
 brackets_regex = re.compile(r"[\(\[].*?[\)\]]")
 
@@ -88,7 +89,7 @@ class SpacyAnalyzer:
             if token.pos_ in pos_exclude:
                 continue
 
-            if punc_sym_regex.match(token.text) and token.pos_ not in ("PUNCT", "SYM"):
+            if punc_sym_regex_exact.match(token.text) and token.pos_ not in ("PUNCT", "SYM"):
                 if any(pos in pos_exclude for pos in ("PUNCT", "SYM")):
                     continue
                 token.pos_ = "N/A"
