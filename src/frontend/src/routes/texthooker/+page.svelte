@@ -10,11 +10,18 @@
 	import { api_fetch } from "$lib/utils/requests.js";
 	import { stringify } from "querystring";
 	import type { LineCreate, LineResponse, PresetUpdate } from "$lib/api_types/texthooker.js";
+	import type { Morpheme } from "$lib/api_types/core.js";
+
+    interface TmpLine {
+        id: number,
+        raw: string,
+        line: Promise<{id: number, tokens: Morpheme[]}>,
+    }
 
     let { data } = $props();
     let lines = $derived(data.lines);
     let status_map = $derived(data.status_map);
-    let new_lines: any[] = $state([]);
+    let new_lines: TmpLine[] = $state([]);
     let ws: WebSocket | null = null;
     let ws_connected = $state(false);
 
@@ -123,14 +130,14 @@
     function scrollBottom () {
         if (isNearBottom()) {
             text_container?.scrollTo(0, text_container.scrollHeight);
-            console.log("scrollBottom");
+            // console.log("scrollBottom");
         }
     }
 
     function scrollLeft () {
         if (isNearLeftMost()) {
             text_container?.scrollTo(-text_container.scrollWidth, 0);
-            console.log("scrollLeft");
+            // console.log("scrollLeft");
         }
     }
 
@@ -186,7 +193,7 @@
     }
 
     function addNewLine(new_line: string) {
-        let tmp = {
+        let tmp: TmpLine = {
             id: -1,
             raw: new_line,
             line: processNewLine(new_line),
