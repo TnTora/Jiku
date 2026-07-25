@@ -8,14 +8,12 @@
     import OptionPanel from "./OptionPanel.svelte";
 	import { goto, invalidateAll } from "$app/navigation";
 	import { api_fetch } from "$lib/utils/requests.js";
-	import { stringify } from "querystring";
-	import type { LineCreate, LineResponse, PresetUpdate } from "$lib/api_types/texthooker.js";
-	import type { Morpheme } from "$lib/api_types/core.js";
+	import type { LineBase, LineCreate, LineResponse, PresetUpdate } from "$lib/api_types/texthooker.js";
 
     interface TmpLine {
         id: number,
         raw: string,
-        line: Promise<{id: number, tokens: Morpheme[]}>,
+        line: Promise<LineBase>,
     }
 
     let { data } = $props();
@@ -24,6 +22,32 @@
     let new_lines: TmpLine[] = $state([]);
     let ws: WebSocket | null = null;
     let ws_connected = $state(false);
+
+    let line_counter: number = $derived(lines.length+new_lines.length);
+    let lines_per_page: number = $state(20);
+
+    // svelte-ignore state_referenced_locally
+    let last_page: number = $state(Math.ceil(line_counter / lines_per_page));
+    let page_num: number = $state(last_page);
+    let start = $derived(lines_per_page * (page_num - 1));
+    let end = $derived(Math.min(start + lines_per_page, line_counter));
+
+    let visible_lines: (LineBase|TmpLine)[] = $derived.by(() => {
+        if (end <= lines.length) {
+            return lines.slice(start, end);
+        }
+
+        if (start >= lines.length) {
+            return new_lines.slice(start-lines.length, end-lines.length);
+        }
+
+        return [...lines.slice(start), ...new_lines.slice(0, end-lines.length)];
+    });
+
+
+    function isTmpLine(line: LineBase | TmpLine): line is TmpLine {
+        return (line as TmpLine).line !== undefined;
+    }
 
 
     // svelte-ignore non_reactive_update
@@ -104,8 +128,6 @@
 
     setTextHookerOptionsContext(options);
 
-    let line_counter = $derived(lines.length+new_lines.length);
-
     let show_options = $state(false);
 
     const errors = getJikuErrorsContext();
@@ -160,10 +182,10 @@
                     err_context: errors,
             });
 
-            let { id, tokens, line_status_map } = <LineResponse> await res.json();
+            let { id, text, tokens, line_status_map } = <LineResponse> await res.json();
             // console.log(tokens);
             status_map = {...status_map, ...line_status_map};
-            return {id, tokens};
+            return {id, text, tokens};
         } catch (error) {
             throw error;
         }
@@ -193,7 +215,7 @@
     }
 
     function addNewLine(new_line: string) {
-        let tmp: TmpLine = {
+        let tmp = {
             id: -1,
             raw: new_line,
             line: processNewLine(new_line),
@@ -253,51 +275,86 @@
     <OptionPanel presets={data.presets} bind:preset_name={preset_name} onoutsideclick={() => {show_options = false}}/>
 {/if}
 
-<div class="fixed bottom-1 left-[50%] -translate-x-[50%] z-9 flex items-center justify-between gap-4 text-xs text-neutral-500 bg-neutral-800 px-2 rounded-full">
-    <label for="preset">Preset:</label>
-    <select id="preset" bind:value={preset_name}
-        onchange={(event) => {
-            const new_preset = (event.target as HTMLSelectElement).value;
-            window.location.href = `?preset=${new_preset}`;
-            // goto(`?preset=${new_preset}`);
-            // options = loadOptions(new_preset);
-        }}
-    >
-        {#each data.presets as preset}
-            <option value={preset}>{preset}</option>
-        {/each}
-    </select>
+
+<div class="fixed w-full bottom-0 pt-0.5 pb-1 flex items-center justify-between gap-4 text-xs text-neutral-500 bg-neutral-800 z-10">
+    <div class="ml-4">
+        {#snippet page_button(text: string, onclick: () => void)}
+            <button
+                class="hover:text-sky-600 active:text-sky-500 cursor-pointer"
+                onclick = {onclick}
+            >
+                {text}
+            </button>
+        {/snippet}
+
+        <span class="mr-2">Page:</span>
+        {@render page_button("<", () => { page_num = Math.max(1, page_num-1); })}
+        <input id="page_num" type="number" bind:value={page_num} min="1" max={last_page} class="hide-input-spinners text-center w-4"
+            oninput={() => {
+                if (page_num < 1) {
+                    page_num = 1;
+                } else if (page_num > last_page) {
+                    page_num = last_page;
+                }
+            }}
+            onclick={function (this: HTMLInputElement) { this.select() }}
+        >
+        <!-- <span>{page_num}</span> -->
+        {@render page_button(">", () => { page_num = Math.min(last_page, page_num+1) })}
+    </div>
+    
+    <div class="absolute left-[50%] -translate-x-[50%] flex items-center justify-between gap-4 px-2">
+        <label for="preset">Preset:</label>
+        <select id="preset" bind:value={preset_name}
+            class="max-w-40"
+            onchange={(event) => {
+                const new_preset = (event.target as HTMLSelectElement).value;
+                window.location.href = `?preset=${new_preset}`;
+                // goto(`?preset=${new_preset}`);
+                // options = loadOptions(new_preset);
+            }}
+        >
+            {#each data.presets as preset}
+                <option value={preset}>{preset}</option>
+            {/each}
+        </select>
+    </div>
+
+    <span class="mr-4">Lines: {start+1}-{end}/{line_counter}</span>
 </div>
 
 
 <div bind:this={text_container} class="relative pt-10 pb-6 w-full h-screen overflow-scroll {options.vertical? "vert-rl pl-5 pr-2": ""}"
     style="line-height: {options.line_height}"
 >
-    <!-- last session lines -->
-    {#each lines as line}
-        <TexthookerLine {line} status_map={status_map}
-            delete_func={() => {
-                lines = lines.filter( e => e.id !== line.id);
-                deleteLine(line.id);
-            }} />
-    {/each}
-
-    <!-- lines added during current session -->
-    {#each new_lines as line}
-        {#await line.line}
-            <p 
-            {@attach () => { scrollToLast() }}
-            class="my-1 py-1 px-5 whitespace-pre-wrap"
-            style="font-size: {options.font_size}px;">{line.raw}</p>
-        {:then line} 
+    {#each visible_lines as line}
+        {#if isTmpLine(line)}
+            <!-- line added during current session -->
+            {#await line.line}
+                <p 
+                {@attach () => { scrollToLast() }}
+                class="my-1 py-1 px-5 whitespace-pre-wrap"
+                style="font-size: {options.font_size}px;">{line.raw}</p>
+            {:then line} 
+                <TexthookerLine {line} status_map={status_map}
+                    delete_func={ () => { 
+                        new_lines = new_lines.filter( e => e.id !== line.id );
+                        deleteLine(line.id);
+                    } }
+                />
+            {/await}
+        {:else}
+            <!-- last session line -->
             <TexthookerLine {line} status_map={status_map}
-                delete_func={ () => { 
-                    new_lines = new_lines.filter( e => e.id !== line.id );
+                delete_func={() => {
+                    lines = lines.filter( e => e.id !== line.id);
                     deleteLine(line.id);
-                } }
+                }}
             />
-        {/await}
+        {/if}
+
     {/each}
+    
 </div>
 
 <style>
