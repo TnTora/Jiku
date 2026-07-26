@@ -10,6 +10,7 @@
 	import { api_fetch } from "$lib/utils/requests.js";
 	import type { LineBase, LineCreate, LineResponse, PresetUpdate } from "$lib/api_types/texthooker.js";
 	import { onMount, tick } from "svelte";
+	import { createRafHandler } from "$lib/utils/raf.js";
 
     interface TmpLine {
         id: number,
@@ -119,41 +120,38 @@
     let text_container_offwidth: number = $state(0);
 
 
-    $effect(() => {
-        console.log(text_container_offheight, text_container_offwidth);
-    });
-
-
     function isNearBottom(threshold = 100) {
-        if (!text_container) { return false };
         const rect = text_container.getBoundingClientRect();
         const scrollBottom = text_container.scrollTop + rect.height;
         return scrollBottom + threshold >= text_container.scrollHeight;
     }
 
     function isNearLeftMost(threshold = 100) {
-        if (!text_container) { return false };
         const rect = text_container.getBoundingClientRect();
         const scrollRight = text_container.scrollLeft - rect.width;
         // console.log(scrollRight);
         return -scrollRight + threshold >= text_container.scrollWidth;
     }
 
-    function scrollBottom () {
-        if (isNearBottom()) {
-            text_container?.scrollTo(0, text_container.scrollHeight);
-            // console.log("scrollBottom");
+    let isNearLast = $derived(options.vertical? isNearLeftMost: isNearBottom)
+
+
+    let getLastScrollPos = $derived(
+        options.vertical?
+        () => { return { left: -text_container.scrollWidth } }:
+        () => { return { top: text_container.scrollHeight } }
+    );
+
+    async function scrollToLast() {
+        text_container?.scrollTo(getLastScrollPos());
+        await tick();
+        if (end < new_lines.length) {
+            end = new_lines.length;
+            await tick();
         }
+        text_container?.scrollTo(getLastScrollPos());
     }
 
-    function scrollLeft () {
-        if (isNearLeftMost()) {
-            text_container?.scrollTo(-text_container.scrollWidth, 0);
-            // console.log("scrollLeft");
-        }
-    }
-
-    let scrollToLast = $derived(options.vertical? scrollLeft: scrollBottom);
 
     async function processNewLine(new_line: string) {
         try {
@@ -211,6 +209,11 @@
             line: processNewLine(new_line),
         };
         new_lines.push(tmp);
+
+        if (isNearLast()) {
+            scrollToLast();
+        }
+        
         tmp.line.then((line) => {
             tmp.id = line.id;
         });
@@ -269,6 +272,8 @@
     let end: number = $state(0);
     let buffer = 5;
 
+    let rafHandler = createRafHandler();
+
     // $effect(() => {
     //     $inspect(visible_lines);
     //     $inspect(visible_html_elements);
@@ -287,6 +292,10 @@
         return new_lines.slice(start, end);
     });
 
+    // $effect(() => {
+    //     console.log(text_container_offheight, text_container_offwidth);
+    // });
+
     $effect(() => {
         for (let j = 0; j < visible_html_elements.length; j++) {
             if (!visible_html_elements[j]) { continue; }
@@ -302,6 +311,13 @@
 
     $effect(() => { refreshVisibles(new_lines, text_container_offheight); });
 
+    $effect(() => {
+        if (text_container_offwidth){
+            height_map.length = 0;
+            console.log(height_map);
+        }
+    });
+
     async function refreshVisibles(items: any[], container_offheight?: number) {
         if (!container_offheight) { return; }
 
@@ -313,7 +329,7 @@
 
 		const { scrollTop } = text_container;
 
-        console.log("scrollTop refresh: ", scrollTop);
+        // console.log("scrollTop refresh: ", scrollTop);
 
 		await tick(); 
 
@@ -345,7 +361,7 @@
     async function handle_scroll() {
 		const { scrollTop } = text_container;
 
-        console.log("scrollTop handle_scroll: ", scrollTop);
+        // console.log("scrollTop handle_scroll: ", scrollTop);
 
 		let i = 0;
 		let y = 0;
@@ -389,7 +405,17 @@
 			if (y > scrollTop + text_container_offheight) break;
 		}
 
-		end = Math.min(i+buffer, new_lines.length);
+        let end_buffer = i;
+        let j = 0;
+
+        while (j < buffer && end_buffer < new_lines.length) {
+            end_buffer++;
+            content_height += (height_map[i+j] || average_item_height);
+            j++;
+        }
+
+		// end = Math.min(i+buffer, new_lines.length);
+        end = end_buffer;
         rendered_height = content_height;
 	}
 
@@ -435,7 +461,9 @@
     id="texthooker-container"
     class="relative pt-10 pb-6 w-full h-screen overflow-auto {options.vertical? "vert-rl pl-5 pr-2": ""}"
     style="line-height: {options.line_height};"
-    onscroll={handle_scroll}
+    onscroll={() => {
+        rafHandler(handle_scroll);
+    }}
 >
     <div style="padding-top: {top_spacing}px; padding-bottom: {bottom_spacing}px;">
         {#each visible_lines as line, index}
@@ -443,10 +471,12 @@
                 {#if isTmpLine(line)}
                     <!-- line added during current session -->
                     {#await line.line}
-                        <p 
-                        {@attach () => { scrollToLast() }}
-                        class="my-1 py-1 px-5 whitespace-pre-wrap"
-                        style="font-size: {options.font_size}px;">{line.raw}</p>
+                        <p
+                            class="my-1 py-1 px-5 whitespace-pre-wrap"
+                            style="font-size: {options.font_size}px;"
+                        >
+                            {line.raw}
+                        </p>
                     {:then line} 
                         <TexthookerLine {line} status_map={status_map}
                             delete_func={ () => { 
