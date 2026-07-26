@@ -2,13 +2,14 @@
     import { browser } from "$app/environment";
     import { page } from "$app/state";
     import { getJikuErrorsContext } from "$lib/utils/context.svelte.js";
-    import { setTextHookerOptionsContext } from "./context.js";
+    import { setTextHookerOptionsContext, type TextHookerOptions } from "./context.js";
     import TexthookerLine from "$lib/components/TexthookerLine.svelte";
     import TopBar from "./TopBar.svelte";
     import OptionPanel from "./OptionPanel.svelte";
 	import { goto, invalidateAll } from "$app/navigation";
 	import { api_fetch } from "$lib/utils/requests.js";
 	import type { LineBase, LineCreate, LineResponse, PresetUpdate } from "$lib/api_types/texthooker.js";
+	import { onMount, tick } from "svelte";
 
     interface TmpLine {
         id: number,
@@ -17,32 +18,13 @@
     }
 
     let { data } = $props();
-    let lines = $derived(data.lines);
+    // let lines = $derived(data.lines);
     let status_map = $derived(data.status_map);
-    let new_lines: TmpLine[] = $state([]);
+    let new_lines: (LineBase|TmpLine)[] = $state(data.lines);
     let ws: WebSocket | null = null;
     let ws_connected = $state(false);
 
-    let line_counter: number = $derived(lines.length+new_lines.length);
-    let lines_per_page: number = $state(20);
-
-    // svelte-ignore state_referenced_locally
-    let last_page: number = $state(Math.ceil(line_counter / lines_per_page));
-    let page_num: number = $state(last_page);
-    let start = $derived(lines_per_page * (page_num - 1));
-    let end = $derived(Math.min(start + lines_per_page, line_counter));
-
-    let visible_lines: (LineBase|TmpLine)[] = $derived.by(() => {
-        if (end <= lines.length) {
-            return lines.slice(start, end);
-        }
-
-        if (start >= lines.length) {
-            return new_lines.slice(start-lines.length, end-lines.length);
-        }
-
-        return [...lines.slice(start), ...new_lines.slice(0, end-lines.length)];
-    });
+    let line_counter: number = $derived(new_lines.length);
 
 
     function isTmpLine(line: LineBase | TmpLine): line is TmpLine {
@@ -80,7 +62,7 @@
 
         }
 
-    let options = $state(loadOptions(preset_name));
+    let options: TextHookerOptions = $state(loadOptions(preset_name));
 
 
     $effect(() => {
@@ -132,7 +114,15 @@
 
     const errors = getJikuErrorsContext();
 
-    let text_container: HTMLDivElement | undefined;
+    let text_container: HTMLDivElement;
+    let text_container_offheight: number = $state(0);
+    let text_container_offwidth: number = $state(0);
+
+
+    $effect(() => {
+        console.log(text_container_offheight, text_container_offwidth);
+    });
+
 
     function isNearBottom(threshold = 100) {
         if (!text_container) { return false };
@@ -267,6 +257,146 @@
         }
 
     }
+
+
+    // Virtual List
+    let visible_html_elements: HTMLDivElement[] = $state([]);
+    let height_map: number[] = [];
+    let seen_items_count = 0;
+    let average_item_height = $state(options.font_size * options.line_height);
+    // let estimated_scroll_heigth: number = $derived(average_item_height*new_lines.length);
+    let start: number = $state(0);
+    let end: number = $state(0);
+    let buffer = 5;
+
+    // $effect(() => {
+    //     $inspect(visible_lines);
+    //     $inspect(visible_html_elements);
+    // });
+
+    let top_spacing = $state(0);
+
+    let rendered_height = $state(0);
+
+    let bottom_spacing: number = $derived(
+        (end < new_lines.length)? (new_lines.length-end)*average_item_height:
+        0
+    );
+
+    let visible_lines: (LineBase|TmpLine)[] = $derived.by(() => {
+        return new_lines.slice(start, end);
+    });
+
+    $effect(() => {
+        for (let j = 0; j < visible_html_elements.length; j++) {
+            if (!visible_html_elements[j]) { continue; }
+
+            if (height_map[start + j] === undefined) {
+                height_map[start + j] = visible_html_elements[j].offsetHeight;
+                average_item_height = ((average_item_height*seen_items_count)+visible_html_elements[j].offsetHeight)/(seen_items_count+1);
+                seen_items_count++;
+            }
+		}
+        // console.log(height_map);
+    });
+
+    $effect(() => { refreshVisibles(new_lines, text_container_offheight); });
+
+    async function refreshVisibles(items: any[], container_offheight?: number) {
+        if (!container_offheight) { return; }
+
+        if (!items) {
+            start = 0;
+            end = 0;
+            return;
+        }
+
+		const { scrollTop } = text_container;
+
+        console.log("scrollTop refresh: ", scrollTop);
+
+		await tick(); 
+
+		let visible_height = top_spacing - scrollTop;
+
+        if (visible_height+rendered_height > container_offheight+average_item_height) {
+            return;
+        }
+
+		let i = start;
+
+		while (visible_height < container_offheight && i < items.length) {
+			let el = visible_html_elements[i - start];
+
+			if (!el) {
+				end = i + 1;
+				await tick(); // await render of new element
+				el = visible_html_elements[i - start];
+			}
+
+			visible_height += el.offsetHeight;
+			i += 1;
+		}
+
+		end = i;
+
+	}
+
+    async function handle_scroll() {
+		const { scrollTop } = text_container;
+
+        console.log("scrollTop handle_scroll: ", scrollTop);
+
+		let i = 0;
+		let y = 0;
+        let content_height = 0;
+
+        await tick();
+
+		while (i < new_lines.length) {
+			const item_height = height_map[i] || average_item_height;
+			if (y + item_height > scrollTop) {
+
+                // apply buffer
+                let start_buffer = i;
+                let y_buffer = y;
+                let j = 1;
+
+                while (j <= buffer && start_buffer > 0) {
+                    start_buffer--;
+                    y_buffer = y_buffer - (height_map[i-j] || average_item_height);
+                    j++;
+                }
+
+                start = start_buffer;
+                top_spacing = y_buffer;
+
+                content_height += item_height;
+				break;
+
+			}
+
+			y += item_height;
+			i += 1;
+		}
+
+		while (i < new_lines.length) {
+            const item_height = height_map[i] || average_item_height;
+            content_height += item_height;
+			y += item_height;
+			i += 1;
+
+			if (y > scrollTop + text_container_offheight) break;
+		}
+
+		end = Math.min(i+buffer, new_lines.length);
+        rendered_height = content_height;
+	}
+
+    // onMount(() => {
+    //     visible_html_elements = text_container?.getElementsByTagName("div");;
+    // });
+
 </script>
 
 <TopBar {toggleWebSocket} {ws_connected} {clearAllLines} toggleOptions={() => {show_options = !show_options}}/>
@@ -276,33 +406,7 @@
 {/if}
 
 
-<div class="fixed w-full bottom-0 pt-0.5 pb-1 flex items-center justify-between gap-4 text-xs text-neutral-500 bg-neutral-800 z-10">
-    <div class="ml-4">
-        {#snippet page_button(text: string, onclick: () => void)}
-            <button
-                class="hover:text-sky-600 active:text-sky-500 cursor-pointer"
-                onclick = {onclick}
-            >
-                {text}
-            </button>
-        {/snippet}
-
-        <span class="mr-2">Page:</span>
-        {@render page_button("<", () => { page_num = Math.max(1, page_num-1); })}
-        <input id="page_num" type="number" bind:value={page_num} min="1" max={last_page} class="hide-input-spinners text-center w-4"
-            oninput={() => {
-                if (page_num < 1) {
-                    page_num = 1;
-                } else if (page_num > last_page) {
-                    page_num = last_page;
-                }
-            }}
-            onclick={function (this: HTMLInputElement) { this.select() }}
-        >
-        <!-- <span>{page_num}</span> -->
-        {@render page_button(">", () => { page_num = Math.min(last_page, page_num+1) })}
-    </div>
-    
+<div class="fixed w-full bottom-0 pt-0.5 pb-1 flex items-center justify-end gap-4 text-xs text-neutral-500 bg-neutral-800 z-10">   
     <div class="absolute left-[50%] -translate-x-[50%] flex items-center justify-between gap-4 px-2">
         <label for="preset">Preset:</label>
         <select id="preset" bind:value={preset_name}
@@ -324,36 +428,45 @@
 </div>
 
 
-<div bind:this={text_container} class="relative pt-10 pb-6 w-full h-screen overflow-scroll {options.vertical? "vert-rl pl-5 pr-2": ""}"
-    style="line-height: {options.line_height}"
+<div
+    bind:this={text_container}
+    bind:offsetHeight={text_container_offheight}
+    bind:offsetWidth={text_container_offwidth}
+    id="texthooker-container"
+    class="relative pt-10 pb-6 w-full h-screen overflow-auto {options.vertical? "vert-rl pl-5 pr-2": ""}"
+    style="line-height: {options.line_height};"
+    onscroll={handle_scroll}
 >
-    {#each visible_lines as line}
-        {#if isTmpLine(line)}
-            <!-- line added during current session -->
-            {#await line.line}
-                <p 
-                {@attach () => { scrollToLast() }}
-                class="my-1 py-1 px-5 whitespace-pre-wrap"
-                style="font-size: {options.font_size}px;">{line.raw}</p>
-            {:then line} 
-                <TexthookerLine {line} status_map={status_map}
-                    delete_func={ () => { 
-                        new_lines = new_lines.filter( e => e.id !== line.id );
-                        deleteLine(line.id);
-                    } }
-                />
-            {/await}
-        {:else}
-            <!-- last session line -->
-            <TexthookerLine {line} status_map={status_map}
-                delete_func={() => {
-                    lines = lines.filter( e => e.id !== line.id);
-                    deleteLine(line.id);
-                }}
-            />
-        {/if}
-
-    {/each}
+    <div style="padding-top: {top_spacing}px; padding-bottom: {bottom_spacing}px;">
+        {#each visible_lines as line, index}
+            <div bind:this={visible_html_elements[index]}>
+                {#if isTmpLine(line)}
+                    <!-- line added during current session -->
+                    {#await line.line}
+                        <p 
+                        {@attach () => { scrollToLast() }}
+                        class="my-1 py-1 px-5 whitespace-pre-wrap"
+                        style="font-size: {options.font_size}px;">{line.raw}</p>
+                    {:then line} 
+                        <TexthookerLine {line} status_map={status_map}
+                            delete_func={ () => { 
+                                new_lines = new_lines.filter( e => e.id !== line.id );
+                                deleteLine(line.id);
+                            } }
+                        />
+                    {/await}
+                {:else}
+                    <!-- last session line -->
+                    <TexthookerLine {line} status_map={status_map}
+                        delete_func={() => {
+                            new_lines = new_lines.filter( e => e.id !== line.id);
+                            deleteLine(line.id);
+                        }}
+                    />
+                {/if}
+            </div>
+        {/each}
+    </div>
     
 </div>
 
