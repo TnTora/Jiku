@@ -21,6 +21,7 @@
     let { data } = $props();
     // let lines = $derived(data.lines);
     let status_map = $derived(data.status_map);
+    // svelte-ignore state_referenced_locally
     let new_lines: (LineBase|TmpLine)[] = $state(data.lines);
     let ws: WebSocket | null = null;
     let ws_connected = $state(false);
@@ -116,8 +117,6 @@
     const errors = getJikuErrorsContext();
 
     let text_container: HTMLDivElement;
-    let text_container_offheight: number = $state(0);
-    let text_container_offwidth: number = $state(0);
 
 
     function isNearBottom(threshold = 100) {
@@ -263,28 +262,37 @@
 
 
     // Virtual List
+    let text_container_offheight: number = $state(0);
+    let text_container_offwidth: number = $state(0);
+    let { text_container_offlength , text_container_ortogonal_offlength} = $derived.by(() => {
+        if (options.vertical) {
+            return {
+                text_container_offlength: text_container_offwidth,
+                text_container_ortogonal_offlength: text_container_offheight,
+            }
+        } else {
+            return {
+                text_container_offlength: text_container_offheight,
+                text_container_ortogonal_offlength: text_container_offwidth,
+            }
+        }
+    });
+
     let visible_html_elements: HTMLDivElement[] = $state([]);
-    let height_map: number[] = [];
+
+    let length_map: number[] = [];
     let seen_items_count = 0;
-    let average_item_height = $state(options.font_size * options.line_height);
-    // let estimated_scroll_heigth: number = $derived(average_item_height*new_lines.length);
+    let average_item_size = $state(options.font_size * options.line_height);
+
     let start: number = $state(0);
     let end: number = $state(0);
     let buffer = 5;
 
-    let rafHandler = createRafHandler();
-
-    // $effect(() => {
-    //     $inspect(visible_lines);
-    //     $inspect(visible_html_elements);
-    // });
-
-    let top_spacing = $state(0);
-
-    let rendered_height = $state(0);
-
-    let bottom_spacing: number = $derived(
-        (end < new_lines.length)? (new_lines.length-end)*average_item_height:
+    let before_spacing = $state(0);
+    let rendered_length = $state(0);
+    let after_spacing: number = $derived(
+        (end < new_lines.length)?
+        (new_lines.length-end)*average_item_size:
         0
     );
 
@@ -292,34 +300,55 @@
         return new_lines.slice(start, end);
     });
 
+    let getOffsetLength = $derived(
+        options.vertical?
+        (el: HTMLElement) => { return el.offsetWidth; }:
+        (el: HTMLElement) => { return el.offsetHeight; }
+    );
+
+    let getScrollPosition = $derived(
+        options.vertical?
+        (el: HTMLElement) => { return -el.scrollLeft; }:
+        (el: HTMLElement) => { return el.scrollTop; }
+    );
+
+    let rafHandler = createRafHandler();
+
     // $effect(() => {
-    //     console.log(text_container_offheight, text_container_offwidth);
+    //     // $inspect(visible_lines);
+    //     // $inspect(visible_html_elements);
+    //     console.log("before_spacing: ", before_spacing);
+    //     console.log(getScrollPosition(text_container));
     // });
+
+    $effect(() => {
+        console.log(text_container_offheight, text_container_offwidth);
+    });
 
     $effect(() => {
         for (let j = 0; j < visible_html_elements.length; j++) {
             if (!visible_html_elements[j]) { continue; }
 
-            if (height_map[start + j] === undefined) {
-                height_map[start + j] = visible_html_elements[j].offsetHeight;
-                average_item_height = ((average_item_height*seen_items_count)+visible_html_elements[j].offsetHeight)/(seen_items_count+1);
+            if (length_map[start + j] === undefined) {
+                length_map[start + j] = getOffsetLength(visible_html_elements[j]);
+                average_item_size = ((average_item_size*seen_items_count) + getOffsetLength(visible_html_elements[j])) / (seen_items_count + 1);
                 seen_items_count++;
             }
 		}
-        // console.log(height_map);
+        // console.log(length_map);
     });
 
-    $effect(() => { refreshVisibles(new_lines, text_container_offheight); });
+    $effect(() => { refreshVisibles(new_lines, text_container_offlength); });
 
     $effect(() => {
-        if (text_container_offwidth){
-            height_map.length = 0;
-            console.log(height_map);
+        if (text_container_ortogonal_offlength || options.vertical){
+            length_map.length = 0;
+            console.log(length_map);
         }
     });
 
-    async function refreshVisibles(items: any[], container_offheight?: number) {
-        if (!container_offheight) { return; }
+    async function refreshVisibles(items: any[], container_offlength?: number) {
+        if (!container_offlength) { return; }
 
         if (!items) {
             start = 0;
@@ -327,21 +356,22 @@
             return;
         }
 
-		const { scrollTop } = text_container;
+		// const { scrollTop } = text_container;
+        const scrollPos = getScrollPosition(text_container);
 
         // console.log("scrollTop refresh: ", scrollTop);
 
 		await tick(); 
 
-		let visible_height = top_spacing - scrollTop;
+		let visible_height = before_spacing - scrollPos;
 
-        if (visible_height+rendered_height > container_offheight+average_item_height) {
+        if (visible_height+rendered_length > container_offlength+average_item_size) {
             return;
         }
 
 		let i = start;
 
-		while (visible_height < container_offheight && i < items.length) {
+		while (visible_height < container_offlength && i < items.length) {
 			let el = visible_html_elements[i - start];
 
 			if (!el) {
@@ -350,7 +380,7 @@
 				el = visible_html_elements[i - start];
 			}
 
-			visible_height += el.offsetHeight;
+			visible_height += getOffsetLength(el);
 			i += 1;
 		}
 
@@ -359,7 +389,8 @@
 	}
 
     async function handle_scroll() {
-		const { scrollTop } = text_container;
+		// const { scrollTop } = text_container;
+        const scrollPos = getScrollPosition(text_container);
 
         // console.log("scrollTop handle_scroll: ", scrollTop);
 
@@ -370,8 +401,8 @@
         await tick();
 
 		while (i < new_lines.length) {
-			const item_height = height_map[i] || average_item_height;
-			if (y + item_height > scrollTop) {
+			const item_height = length_map[i] || average_item_size;
+			if (y + item_height > scrollPos) {
 
                 // apply buffer
                 let start_buffer = i;
@@ -380,12 +411,12 @@
 
                 while (j <= buffer && start_buffer > 0) {
                     start_buffer--;
-                    y_buffer = y_buffer - (height_map[i-j] || average_item_height);
+                    y_buffer = y_buffer - (length_map[i-j] || average_item_size);
                     j++;
                 }
 
                 start = start_buffer;
-                top_spacing = y_buffer;
+                before_spacing = y_buffer;
 
                 content_height += item_height;
 				break;
@@ -397,12 +428,12 @@
 		}
 
 		while (i < new_lines.length) {
-            const item_height = height_map[i] || average_item_height;
+            const item_height = length_map[i] || average_item_size;
             content_height += item_height;
 			y += item_height;
 			i += 1;
 
-			if (y > scrollTop + text_container_offheight) break;
+			if (y > scrollPos + text_container_offlength) break;
 		}
 
         let end_buffer = i;
@@ -410,13 +441,13 @@
 
         while (j < buffer && end_buffer < new_lines.length) {
             end_buffer++;
-            content_height += (height_map[i+j] || average_item_height);
+            content_height += (length_map[i+j] || average_item_size);
             j++;
         }
 
 		// end = Math.min(i+buffer, new_lines.length);
         end = end_buffer;
-        rendered_height = content_height;
+        rendered_length = content_height;
 	}
 
     // onMount(() => {
@@ -465,7 +496,7 @@
         rafHandler(handle_scroll);
     }}
 >
-    <div style="padding-top: {top_spacing}px; padding-bottom: {bottom_spacing}px;">
+    <div style="{options.vertical? "padding-right": "padding-top"}: {before_spacing}px; {options.vertical? "padding-left":"padding-bottom"}: {after_spacing}px;">
         {#each visible_lines as line, index}
             <div bind:this={visible_html_elements[index]}>
                 {#if isTmpLine(line)}
