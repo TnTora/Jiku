@@ -186,6 +186,15 @@
                 err_msg: "Failed to delete line",
                 err_context: errors
         });
+        const line_idx = new_lines.findIndex(e => e.id === line_id);
+        if (line_idx > -1) {
+            const removed_length = length_map.splice(line_idx, 1);
+            if (removed_length && removed_length[0] !== undefined) {
+                average_item_size = ((average_item_size*seen_items_count)-removed_length[0]) / (seen_items_count-1);
+                seen_items_count--;
+            }
+            new_lines.splice(line_idx, 1);
+        }
     }
 
     async function clearAllLines() {
@@ -196,8 +205,9 @@
                 err_context: errors,
         });
         
+        new_lines.length = 0;
         invalidateAll();
-        new_lines = [];
+        // new_lines = [];
 
     }
 
@@ -283,6 +293,7 @@
     let length_map: number[] = [];
     let seen_items_count = 0;
     let average_item_size = $state(options.font_size * options.line_height);
+    let estimated_total_size = $derived(average_item_size*new_lines.length);
 
     let start: number = $state(0);
     let end: number = $state(0);
@@ -292,7 +303,7 @@
     let rendered_length = $state(0);
     let after_spacing: number = $derived(
         (end < new_lines.length)?
-        (new_lines.length-end)*average_item_size:
+        estimated_total_size - before_spacing - rendered_length:
         0
     );
 
@@ -313,6 +324,7 @@
     );
 
     let rafHandler = createRafHandler();
+    let oldScrollPosition = 0;
 
     // $effect(() => {
     //     // $inspect(visible_lines);
@@ -356,22 +368,21 @@
             return;
         }
 
-		// const { scrollTop } = text_container;
         const scrollPos = getScrollPosition(text_container);
 
         // console.log("scrollTop refresh: ", scrollTop);
 
 		await tick(); 
 
-		let visible_height = before_spacing - scrollPos;
+		let visible_length = before_spacing - scrollPos;
 
-        if (visible_height+rendered_length > container_offlength+average_item_size) {
+        if (visible_length+rendered_length > container_offlength+average_item_size) {
             return;
         }
 
 		let i = start;
 
-		while (visible_height < container_offlength && i < items.length) {
+		while (visible_length < container_offlength && i < items.length) {
 			let el = visible_html_elements[i - start];
 
 			if (!el) {
@@ -380,7 +391,7 @@
 				el = visible_html_elements[i - start];
 			}
 
-			visible_height += getOffsetLength(el);
+			visible_length += getOffsetLength(el);
 			i += 1;
 		}
 
@@ -389,8 +400,14 @@
 	}
 
     async function handle_scroll() {
-		// const { scrollTop } = text_container;
         const scrollPos = getScrollPosition(text_container);
+
+        // avoid recalculating for small scrolling changes
+        if (Math.abs(scrollPos - oldScrollPosition) < average_item_size*0.5) {
+            return;
+        }
+
+        oldScrollPosition = scrollPos;
 
         // console.log("scrollTop handle_scroll: ", scrollTop);
 
@@ -511,7 +528,6 @@
                     {:then line} 
                         <TexthookerLine {line} status_map={status_map}
                             delete_func={ () => { 
-                                new_lines = new_lines.filter( e => e.id !== line.id );
                                 deleteLine(line.id);
                             } }
                         />
@@ -520,7 +536,6 @@
                     <!-- last session line -->
                     <TexthookerLine {line} status_map={status_map}
                         delete_func={() => {
-                            new_lines = new_lines.filter( e => e.id !== line.id);
                             deleteLine(line.id);
                         }}
                     />
