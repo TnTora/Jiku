@@ -94,7 +94,7 @@
     let old_scroll_position: number;
 
     // $effect(() => {
-    //     // $inspect(visible_items);
+    //     $inspect(visible_items);
     //     // $inspect(visible_html_elements);
     //     console.log("before_spacing: ", before_spacing);
     //     console.log(getScrollPosition(list_container));
@@ -103,11 +103,6 @@
     $effect(() => {
         console.log(list_container_offheight, list_container_offwidth);
     });
-
-    // $effect(() => {
-    //     start_idx = start;
-    //     end_idx = end;
-    // });
 
     $effect(() => {
         let new_content_length = 0;
@@ -212,50 +207,58 @@
 			const item_height = length_map[i] || guessed_item_size;
 
 			if (y + item_height > scrollPos) {
-                // apply buffer
                 start_idx = i;
                 start_buffer = i;
                 y_buffer = y;
-                let j = 1;
-
-                while (j <= buffer && start_buffer > 0) {
-                    start_buffer--;
-                    y_buffer -= (length_map[i-j] || guessed_item_size);
-                    j++;
-                }
-
 				break;
 			}
 
 			y += item_height;
-			i += 1;
+			i++;
 		}
 
         // find last item 
 		while (i < items.length) {
             const item_height = length_map[i] || average_item_size;
 			y += item_height;
-			i += 1;
+			i++;
 
 			if (y > scrollPos + list_container_offlength) break;
 		}
 
         end_idx = i;
-        let end_buffer = i;
-        let j = 0;
 
-        // apply buffer to end
-        while (j < buffer && end_buffer < items.length) {
-            end_buffer++;
-            j++;
+        if (y_buffer === undefined) {
+            console.log("overscrolled");
+            y_buffer = y;
+            // let j = end_idx;
+            let content_length = 0;
+
+            while (i > 0) {
+                content_length += (length_map[i] || average_item_size);
+                y_buffer -= (length_map[i] || guessed_item_size);
+
+                if (content_length < list_container_offlength) { break; }
+
+                i--;
+            }
+            
+            start_buffer = i;
+
         }
 
-        if (y_buffer === undefined) { return; }
+        // apply buffer
+        let j = 1;
+        while (j <= buffer && start_buffer > 0) {
+            start_buffer--;
+            y_buffer -= (length_map[start_idx-j] || guessed_item_size);
+            j++;
+        }
 
         // update states
         start = start_buffer;
         before_spacing = y_buffer;
-        end = end_buffer;
+        end = Math.min(end_idx+buffer, items.length);
 
         await tick(); // wait for items rendering
 
@@ -276,15 +279,15 @@
             if (!d) { return; }
 
             const target = vertical? 
-                {left: -scrollPos - d} :
-                {top: scrollPos + d} ;
+                {left: - d} :
+                {top: d} ;
 
             // console.log(old_start, start);
             // console.log("before_spacing", before_spacing, "old_spacing", old_spacing);
             // console.log(actual_length, estimated_length, actual_length - estimated_length);
             // console.log("target", target);
 
-            list_container.scrollTo(target);
+            list_container.scrollBy(target);
         }
 	}
 
