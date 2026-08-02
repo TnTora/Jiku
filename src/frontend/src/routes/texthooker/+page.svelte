@@ -15,7 +15,7 @@
     interface TmpLine {
         id: number,
         raw: string,
-        line: Promise<LineBase>,
+        line: Promise<LineBase> | LineBase,
     }
 
     let { data } = $props();
@@ -33,6 +33,9 @@
         return (line as TmpLine).line !== undefined;
     }
 
+    function isLineBase(line: LineBase | Promise<LineBase>): line is LineBase {
+        return (line as LineBase).tokens !== undefined;
+    }
 
     // svelte-ignore non_reactive_update
     let preset_name: string = page.url.searchParams.get("preset")?? "";
@@ -185,9 +188,7 @@
                 err_context: errors
         });
         const line_idx = new_lines.findIndex(e => e.id === line_id);
-        if (line_idx > -1) {
-            vlist.deleteItem(line_idx);
-        }
+        vlist.deleteItem(line_idx);
     }
 
     async function clearAllLines() {
@@ -205,21 +206,31 @@
 
     }
 
+    let new_line_tmp_id = -1;
+
     function addNewLine(new_line: string) {
-        let tmp = {
-            id: -1,
+        let tmp: TmpLine = $state({
+            id: new_line_tmp_id,
             raw: new_line,
             line: processNewLine(new_line),
-        };
+        });
+        const curr_tmp_id = new_line_tmp_id;
+        new_line_tmp_id--;
+        
+        const near_last: boolean = isNearLast();
         new_lines.push(tmp);
 
         // tick().then(scrollToLast);
-        if (isNearLast()) {
+        if (near_last) {
             tick().then(scrollToLast);
         }
 
-        tmp.line.then((line) => {
+        (tmp.line as Promise<LineBase>).then((line) => {
+            tmp.line = line;
             tmp.id = line.id;
+        }, () => {
+            const index = new_lines.findIndex((el) => el.id === curr_tmp_id );
+            vlist.deleteItem(index);
         });
     }
 
@@ -305,66 +316,82 @@
     <OptionPanel presets={data.presets} bind:preset_name={preset_name} onoutsideclick={() => {show_options = false}}/>
 {/if}
 
+<div class="h-screen flex flex-col">
+    <VirtualList
+        bind:this={vlist}
+        bind:container={text_container}
+        bind:start_idx={start}
+        bind:end_idx={end}
+        items={new_lines}
+        {vertical}
+        {guessed_item_size}
+        {buffer}
+        id="texthooker-container"
+        class="relative pt-10 pb-6 w-full grow overflow-auto {options.vertical? "vert-rl pl-5 pr-2": ""}"
+        style="line-height: {options.line_height};"
+    >
+        {#snippet render_item(line, index)}
+            {#if isTmpLine(line)}
+                <!-- line added during current session -->
+                {#if line.id < 0}
+                    <p
+                        class="my-1 py-1 px-5 whitespace-pre-wrap"
+                        style="font-size: {options.font_size}px;"
+                        // {@attach (el: HTMLParagraphElement) => {
+                        //     console.log("p offset", el.parentElement?.offsetHeight)
+                        //     const parent_length = el.parentElement?.offsetHeight;
+                        //     if (parent_length !== undefined) {
+                        //         vlist.updateLengthMap(index, parent_length);
+                        //     }
+                        // }}
+                    >
+                        {line.raw}
+                    </p>
+                {:else if isLineBase(line.line)} 
+                    <TexthookerLine line={line.line} status_map={status_map}
+                        delete_func={ () => { 
+                            deleteLine(line.id);
+                        } }
+                        {@attach (el: HTMLDivElement) => {
+                            // console.log("div offset", el.parentElement?.offsetHeight);
+                            const parent_length = el.parentElement?.offsetHeight;
+                            if (parent_length !== undefined) {
+                                vlist.updateLengthMap(index, parent_length);
+                            }
+                        }}
+                    />
+                {/if}
+            {:else}
+                <!-- last session line -->
+                <TexthookerLine {line} status_map={status_map}
+                    delete_func={() => {
+                        deleteLine(line.id);
+                    }}
+                />
+            {/if}
+        {/snippet}
+    </VirtualList>
 
-<div class="fixed w-full bottom-0 pt-0.5 pb-1 flex items-center justify-end gap-4 text-xs text-neutral-500 bg-neutral-800 z-10">   
-    <div class="absolute left-[50%] -translate-x-[50%] flex items-center justify-between gap-4 px-2">
-        <label for="preset">Preset:</label>
-        <select id="preset" bind:value={preset_name}
-            class="max-w-40"
-            onchange={(event) => {
-                const new_preset = (event.target as HTMLSelectElement).value;
-                window.location.href = `?preset=${new_preset}`;
-            }}
-        >
-            {#each data.presets as preset}
-                <option value={preset}>{preset}</option>
-            {/each}
-        </select>
+    <div class="grow-0 shrink-0 w-full bottom-0 pt-0.5 pb-1 flex items-center justify-end gap-4 text-xs text-neutral-500 border-t border-neutral-700 bg-neutral-800 z-10">   
+        <div class="absolute left-[50%] -translate-x-[50%] flex items-center justify-between gap-4 px-2">
+            <label for="preset">Preset:</label>
+            <select id="preset" bind:value={preset_name}
+                class="max-w-40"
+                onchange={(event) => {
+                    const new_preset = (event.target as HTMLSelectElement).value;
+                    window.location.href = `?preset=${new_preset}`;
+                }}
+            >
+                {#each data.presets as preset}
+                    <option value={preset}>{preset}</option>
+                {/each}
+            </select>
+        </div>
+    
+        <span class="mr-4">Lines: {start+1}-{end}/{line_counter}</span>
     </div>
 
-    <span class="mr-4">Lines: {start+1}-{end}/{line_counter}</span>
 </div>
-
-<VirtualList
-    bind:this={vlist}
-    bind:container={text_container}
-    bind:start_idx={start}
-    bind:end_idx={end}
-    items={new_lines}
-    {vertical}
-    {guessed_item_size}
-    {buffer}
-    id="texthooker-container"
-    class="relative pt-10 pb-6 w-full h-screen overflow-auto {options.vertical? "vert-rl pl-5 pr-2": ""}"
-    style="line-height: {options.line_height};"
->
-    {#snippet render_item(line, index)}
-        {#if isTmpLine(line)}
-            <!-- line added during current session -->
-            {#await line.line}
-                <p
-                    class="my-1 py-1 px-5 whitespace-pre-wrap"
-                    style="font-size: {options.font_size}px;"
-                >
-                    {line.raw}
-                </p>
-            {:then line} 
-                <TexthookerLine {line} status_map={status_map}
-                    delete_func={ () => { 
-                        deleteLine(line.id);
-                    } }
-                />
-            {/await}
-        {:else}
-            <!-- last session line -->
-            <TexthookerLine {line} status_map={status_map}
-                delete_func={() => {
-                    deleteLine(line.id);
-                }}
-            />
-        {/if}
-    {/snippet}
-</VirtualList>
 
 <style>
     

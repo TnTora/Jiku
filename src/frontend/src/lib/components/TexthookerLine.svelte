@@ -1,20 +1,23 @@
 <script lang="ts">
 	import type { KnownStatus, LineBase } from "$lib/api_types/texthooker";
+	import type { SvelteHTMLElements } from "svelte/elements";
     import { getTextHookerOptionsContext } from "../../routes/texthooker/context";
+
+    type HTMLDivAttributes = SvelteHTMLElements["div"];
     
-    interface Props {
+    interface Props extends HTMLDivAttributes {
         line: LineBase,
         status_map: { [k:string]: KnownStatus },
         delete_func: () => void,
     }
     
-    let { line, status_map, delete_func }: Props = $props()
+    let { line, status_map, delete_func, ...rest }: Props = $props()
     let options = getTextHookerOptionsContext();
     let exclude_pos = new Set(["PUNCT", "SPACE", "X", "SYM", "N/A"]);
 
 </script>
 
-<div class="relative flex items-center">
+<div class="relative flex items-center" {...rest}>
     <p class="my-1 py-1 px-5 whitespace-pre-wrap" style="font-size: {options.font_size}px;">
         {#each line.tokens as word}
             {#if word.lemma in status_map}

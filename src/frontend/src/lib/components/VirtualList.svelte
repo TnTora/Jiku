@@ -105,22 +105,32 @@
     });
 
     $effect(() => {
+        // console.log("start", start);
+        const sync = { start };
         let new_content_length = 0;
         for (let j = 0; j < visible_html_elements.length; j++) {
             if (!visible_html_elements[j]) { continue; }
 
-            if (length_map[start + j] === undefined) {
-                const item_size = getOffsetLength(visible_html_elements[j])
-                length_map[start + j] = item_size;
+            const item_index = start + j;
+            const item_index_data = Number(visible_html_elements[j].dataset.originalIndex);
+
+            if (length_map[item_index_data] === undefined) {
+                const item_size = getOffsetLength(visible_html_elements[j]);
+                // console.log("item_size", item_size);
+
+                if (!item_size) { continue; }
+
+                length_map[item_index_data] = item_size;
                 average_item_size = ((average_item_size*seen_items_count) + item_size) / (seen_items_count + 1);
                 seen_items_count++;
                 // console.log("seen_items_count", seen_items_count);
                 // console.log("estimated_total_size", estimated_total_size);
             }
 
-            new_content_length += length_map[start + j];
+            new_content_length += length_map[item_index_data];
 		}
         rendered_length = new_content_length;
+        // $inspect(length_map);
     });
 
     $effect(() => { refreshVisibles(items, list_container_offlength); });
@@ -135,6 +145,11 @@
         }
     });
 
+    // svelte-ignore state_referenced_locally
+    let old_items_length = items.length;
+    // svelte-ignore state_referenced_locally
+    let old_container_offlength = list_container_offlength;
+
     async function refreshVisibles(items: any[], container_offlength?: number) {
         if (!container_offlength || !visible_html_elements) { return; }
 
@@ -144,9 +159,17 @@
             return;
         }
 
+        console.log("old_items_length", old_items_length, "items.length", items.length, "old_container_offlength", old_container_offlength, "container_offlength", container_offlength);
+
+        const needs_refresh = ((items.length < old_items_length) || (container_offlength > old_container_offlength));
+        old_items_length = items.length;
+        old_container_offlength = container_offlength;
+
+        if (!needs_refresh) { return; }
+
         const scrollPos = getScrollPosition(list_container);
 
-        // console.log("scrollTop refresh: ", scrollPos);
+        console.log("scrollPos refresh: ", scrollPos);
 
 		await tick(); 
 
@@ -255,18 +278,26 @@
             j++;
         }
 
+        // let estimated_length = 0;
+
+        // for(let i = start_buffer; i < old_start; i++) {
+        //     console.log()
+        //     estimated_length += (length_map[i] || guessed_item_size);
+        // }
+
         // update states
         start = start_buffer;
         before_spacing = y_buffer;
         end = Math.min(end_idx+buffer, items.length);
 
-        await tick(); // wait for items rendering
 
         if (start < old_start) {
             // correct scroll position when scrolling up without a known offset
             // due to rendered items size being different from the estimated one
             let actual_length = 0;
             let estimated_length = old_spacing-before_spacing;
+
+            await tick(); // wait for items rendering
 
             for(let i = start; i < old_start; i++) {
                 if (visible_html_elements[i-start]) {
@@ -337,6 +368,11 @@
 
         list_container.scrollTo(target);
 	}
+
+    export function updateLengthMap(index: number, value: number) {
+        length_map[index] = value;
+        console.log(`length ${index}: ${value}`);
+    }
 
     function scheduled_scroll() {
         rafHandler(handle_scroll);
