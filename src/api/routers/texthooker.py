@@ -1,7 +1,8 @@
+from collections.abc import Iterable
 from fastapi import APIRouter, status, Depends, HTTPException
 
 from api.core.text_analysis.spacy_wrapper import get_analyzer
-from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse, PresetRename, PresetCreate, PresetInfo, PresetUpdate
+from api.schemas.texthooker import LineCreate, LineResponse, LastSessionResponse, PresetRename, PresetCreate, PresetInfo, PresetUpdate, StatusMapResponse, TexthookerLinesResponse, TexthookerStreamedLineResponse
 
 from api.db import get_db
 
@@ -29,16 +30,74 @@ def correct_line_whitespace(line: str) -> str:
 
 #-------------------------------------------------------------------------------
 
-@router.get("/last_session", response_model=LastSessionResponse)
-def last_session(
+@router.get("/lines", response_model=TexthookerLinesResponse)
+def lines(
     db: Annotated[Session, Depends(get_db)],
-    preset: str | None,
+    preset: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
 ):
-    preset = preset or "Default"
+    stmt = select(Line)
+
+    if preset is not None:
+        stmt = stmt.where(Line.preset == preset)
+
+    stmt = stmt.order_by(Line.date_added)
+
+    if limit is not None:
+        stmt = stmt.limit(limit)
+
+    if offset is not None:
+        stmt = stmt.offset(offset)
+
     lines = db.execute(
-        select(Line).where(Line.preset == preset).order_by(Line.date_added)
+        stmt
     ).scalars().all()
 
+    offset = offset or 0
+
+    return {"lines": lines, "start": offset, "length": len(lines)}
+
+
+@router.get("/lines_stream")
+def lines_stream(
+    db: Annotated[Session, Depends(get_db)],
+    preset: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
+) -> Iterable[TexthookerStreamedLineResponse]:
+
+    stmt = select(Line)
+
+    if preset is not None:
+        stmt = stmt.where(Line.preset == preset)
+
+    stmt = stmt.order_by(Line.date_added)
+
+    if limit is not None:
+        stmt = stmt.limit(limit)
+
+    if offset is not None:
+        stmt = stmt.offset(offset)
+
+    lines = db.execute(
+        stmt
+    ).scalars().all()
+
+    offset = offset or 0
+
+    for i, line in enumerate(lines):
+        yield TexthookerStreamedLineResponse(
+            line=line,
+            idx=offset+i
+        )
+
+
+@router.get("/status_map", response_model=StatusMapResponse)
+def status_map(
+    db: Annotated[Session, Depends(get_db)],
+    preset: str | None = None
+):
     #TODO: Add filter for preset name
     status_result = db.execute(
         select(Morpheme.lemma, func.max(AnkiNote.status))
@@ -49,8 +108,23 @@ def last_session(
     )
 
     status_map = {lemma: status for lemma, status in status_result}  # noqa: C416
+    return { "status_map": status_map }
 
-    return {"lines": lines, "status_map": status_map}
+
+@router.get("/lines_count", response_model=int)
+def line_count(
+    db: Annotated[Session, Depends(get_db)],
+    preset: str | None = None,
+):
+    stmt = select(func.count(Line.id))
+
+    if preset is not None:
+        stmt = stmt.where(Line.preset == preset)
+
+    count = db.execute(stmt).scalar_one()
+
+    return count
+
 
 @router.post(
     "/new_line",

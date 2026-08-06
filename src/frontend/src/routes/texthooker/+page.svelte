@@ -8,9 +8,9 @@
     import OptionPanel from "./OptionPanel.svelte";
 	import { goto, invalidateAll } from "$app/navigation";
 	import { api_fetch } from "$lib/utils/requests.js";
-	import type { LineBase, LineCreate, LineResponse, PresetUpdate } from "$lib/api_types/texthooker.js";
+	import type { KnownStatus, LineBase, LineCreate, LineResponse, PresetUpdate, TexthookerStreamedLineResponse } from "$lib/api_types/texthooker.js";
 	import VirtualList from "$lib/components/VirtualList.svelte";
-	import { tick } from "svelte";
+	import { onMount, tick } from "svelte";
 
     interface TmpLine {
         id: number,
@@ -18,11 +18,87 @@
         line: Promise<LineBase> | LineBase,
     }
 
+
+    interface FetchLinesRequest {
+        preset: string,
+        limit: number,
+        offset: number
+    }
+
+
     let { data } = $props();
-    // let lines = $derived(data.lines);
-    let status_map = $derived(data.status_map);
-    // svelte-ignore state_referenced_locally
-    let new_lines: (LineBase|TmpLine)[] = $state(data.lines);
+    let status_map: {[k: string]: KnownStatus} = $state({});
+    let new_lines: (LineBase|TmpLine|number)[] = $state(Array.from({ length: data.lines_count }, () => 30+Math.floor(Math.random()*60)));
+    // let new_lines: (LineBase|TmpLine)[] = $state(Array(data.lines_count));
+    let load_failed = $state(false);
+
+    // $effect(() => {
+    //     $inspect(new_lines);
+    //     $inspect(status_map);
+    // })
+
+    // svelte-ignore non_reactive_update
+    let preset_name: string = page.url.searchParams.get("preset")?? "";
+
+    if (browser) {
+        // svelte-ignore state_referenced_locally
+        if (!preset_name || !data.presets.includes(preset_name)) {
+            goto(`/texthooker?preset=Default`);
+        }
+    }
+
+    async function fetchLines ({preset, limit, offset}: FetchLinesRequest) {
+        const res = await api_fetch(`/texthooker/lines_stream?preset=${preset}&limit=${limit}&offset=${offset}`, {headers: {"Accept": "application/jsonl"}});
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) { return; }
+
+        let buffer = ""
+
+        while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) {
+                return;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+
+            console.log("value", buffer);
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+                const parsed: TexthookerStreamedLineResponse = JSON.parse(line);
+                console.log(parsed);
+                new_lines[parsed.idx] = parsed.line;
+                vlist.updateLengthMap(parsed.idx, undefined);
+            }
+
+        }
+    }
+
+
+    function loadLastSession() {
+        data.status_map.then(
+            (res) => { status_map = res; },
+            (err) => {
+                console.error(err);
+                alert("Failed to load status map");
+            }
+        );
+
+        for (let chunk of data.lines_chunks) {
+            chunk.then(
+                (res) => { new_lines.splice(res.start, res.length, ...res.lines); },
+                () => { load_failed = true; } 
+            );
+        }
+    }
+
+    loadLastSession();
+
     let ws: WebSocket | null = null;
     let ws_connected = $state(false);
 
@@ -37,15 +113,6 @@
         return (line as LineBase).tokens !== undefined;
     }
 
-    // svelte-ignore non_reactive_update
-    let preset_name: string = page.url.searchParams.get("preset")?? "";
-
-    if (browser) {
-        // svelte-ignore state_referenced_locally
-        if (!preset_name || !data.presets.includes(preset_name)) {
-            goto(`/texthooker?preset=Default`);
-        }
-    }
 
     function loadOptions(name: string) {
             let stored;
@@ -187,7 +254,7 @@
                 err_msg: "Failed to delete line",
                 err_context: errors
         });
-        const line_idx = new_lines.findIndex(e => e.id === line_id);
+        const line_idx = new_lines.findIndex((e) => (e as LineBase|TmpLine).id === line_id);
         vlist.deleteItem(line_idx);
     }
 
@@ -229,7 +296,7 @@
             tmp.line = line;
             tmp.id = line.id;
         }, () => {
-            const index = new_lines.findIndex((el) => el.id === curr_tmp_id );
+            const index = new_lines.findIndex((el) => (el as LineBase|TmpLine).id === curr_tmp_id );
             vlist.deleteItem(index);
         });
     }
@@ -278,6 +345,7 @@
 
 
     // Virtual List
+    // svelte-ignore non_reactive_update
     let vlist: ReturnType<typeof VirtualList>;
     
     let vertical = $derived(options.vertical);
@@ -308,6 +376,13 @@
         }, 100);
     }
 
+
+    onMount(() => {
+        if (data.lines_count > 2*data.chunk_size) {
+            fetchLines({preset: preset_name, limit: data.lines_count-data.chunk_size, offset: data.chunk_size});
+        }
+    });
+
 </script>
 
 <TopBar {toggleWebSocket} {ws_connected} {clearAllLines} {scrollToLast} toggleOptions={() => {show_options = !show_options}}/>
@@ -317,60 +392,75 @@
 {/if}
 
 <div class="h-screen flex flex-col">
-    <VirtualList
-        bind:this={vlist}
-        bind:container={text_container}
-        bind:start_idx={start}
-        bind:end_idx={end}
-        items={new_lines}
-        {vertical}
-        {guessed_item_size}
-        {buffer}
-        id="texthooker-container"
-        class="relative pt-10 pb-6 w-full grow overflow-auto {options.vertical? "vert-rl pl-5 pr-2": ""}"
-        style="line-height: {options.line_height};"
-    >
-        {#snippet render_item(line, index)}
-            {#if isTmpLine(line)}
-                <!-- line added during current session -->
-                {#if line.id < 0}
-                    <p
-                        class="my-1 py-1 px-5 whitespace-pre-wrap"
-                        style="font-size: {options.font_size}px;"
-                        // {@attach (el: HTMLParagraphElement) => {
-                        //     console.log("p offset", el.parentElement?.offsetHeight)
-                        //     const parent_length = el.parentElement?.offsetHeight;
-                        //     if (parent_length !== undefined) {
-                        //         vlist.updateLengthMap(index, parent_length);
-                        //     }
-                        // }}
-                    >
-                        {line.raw}
-                    </p>
-                {:else if isLineBase(line.line)} 
-                    <TexthookerLine line={line.line} status_map={status_map}
-                        delete_func={ () => { 
+    {#if load_failed}
+        <p
+            class="pt-10"
+            style="line-height: {options.line_height}; font-size: {options.font_size}px"
+        >
+            Failed to load lines
+        </p>
+    {:else}
+        <VirtualList
+            bind:this={vlist}
+            bind:container={text_container}
+            bind:start_idx={start}
+            bind:end_idx={end}
+            items={new_lines}
+            {vertical}
+            {guessed_item_size}
+            {buffer}
+            id="texthooker-container"
+            class="relative pt-10 pb-6 w-full grow overflow-auto {options.vertical? "vert-rl pl-5 pr-2": ""}"
+            style="line-height: {options.line_height};"
+        >
+            {#snippet render_item(line, index)}
+                {#if typeof line === 'number' }
+                    <div
+                        class="my-4 mx-5 shimmer rounded-full"
+                        style="height: {options.font_size}px; width: {line}%"
+                    ></div>
+                {:else if isTmpLine(line)}
+                    <!-- line added during current session -->
+                    <!-- avoid await block as it resulted in jumps due to wrong size being detected -->
+                    {#if line.id < 0}
+                        <p
+                            class="my-1 py-1 px-5 whitespace-pre-wrap"
+                            style="font-size: {options.font_size}px;"
+                            // {@attach (el: HTMLParagraphElement) => {
+                            //     console.log("p offset", el.parentElement?.offsetHeight)
+                            //     const parent_length = el.parentElement?.offsetHeight;
+                            //     if (parent_length !== undefined) {
+                            //         vlist.updateLengthMap(index, parent_length);
+                            //     }
+                            // }}
+                        >
+                            {line.raw}
+                        </p>
+                    {:else if isLineBase(line.line)} 
+                        <TexthookerLine line={line.line} status_map={status_map}
+                            delete_func={ () => { 
+                                deleteLine(line.id);
+                            } }
+                            {@attach (el: HTMLDivElement) => {
+                                // console.log("div offset", el.parentElement?.offsetHeight);
+                                const parent_length = el.parentElement?.offsetHeight;
+                                if (parent_length !== undefined) {
+                                    vlist.updateLengthMap(index, parent_length);
+                                }
+                            }}
+                        />
+                    {/if}
+                {:else}
+                    <!-- last session line -->
+                    <TexthookerLine {line} status_map={status_map}
+                        delete_func={() => {
                             deleteLine(line.id);
-                        } }
-                        {@attach (el: HTMLDivElement) => {
-                            // console.log("div offset", el.parentElement?.offsetHeight);
-                            const parent_length = el.parentElement?.offsetHeight;
-                            if (parent_length !== undefined) {
-                                vlist.updateLengthMap(index, parent_length);
-                            }
                         }}
                     />
                 {/if}
-            {:else}
-                <!-- last session line -->
-                <TexthookerLine {line} status_map={status_map}
-                    delete_func={() => {
-                        deleteLine(line.id);
-                    }}
-                />
-            {/if}
-        {/snippet}
-    </VirtualList>
+            {/snippet}
+        </VirtualList>
+    {/if}
 
     <div class="grow-0 shrink-0 w-full bottom-0 pt-0.5 pb-1 flex items-center justify-end gap-4 text-xs text-neutral-500 border-t border-neutral-700 bg-neutral-800 z-10">   
         <div class="absolute left-[50%] -translate-x-[50%] flex items-center justify-between gap-4 px-2">
@@ -394,6 +484,19 @@
 </div>
 
 <style>
-    
+    .shimmer {
+        background: linear-gradient(to right, #3e3e3e 30%,#DCDCDC 50%,#3e3e3e 70%);
+        background-size: 400%;
+        animation: shimmer 1.5s infinite linear;
+    }
+
+    @keyframes shimmer {
+	0% {
+		background-position: 100%;
+	}
+	100% {
+		background-position: 0%;
+	}
+}
 </style>
 

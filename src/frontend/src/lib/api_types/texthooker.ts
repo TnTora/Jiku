@@ -53,3 +53,17 @@ export interface PresetUpdate {
   name: string;
   ws_url: string;
 }
+export interface StatusMapResponse {
+  status_map: {
+    [k: string]: KnownStatus;
+  };
+}
+export interface TexthookerLinesResponse {
+  lines: LineBase[];
+  start: number;
+  length: number;
+}
+export interface TexthookerStreamedLineResponse {
+  line: LineBase;
+  idx: number;
+}

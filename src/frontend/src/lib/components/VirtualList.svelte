@@ -53,7 +53,7 @@
 
     let visible_html_elements: HTMLDivElement[] = $state([]);
 
-    let length_map: number[] = [];
+    let length_map: (number | undefined)[] = [];
     let seen_items_count = 0;
     // svelte-ignore state_referenced_locally
     let average_item_size = $state(guessed_item_size);
@@ -369,7 +369,7 @@
         list_container.scrollTo(target);
 	}
 
-    export function updateLengthMap(index: number, value: number) {
+    export function updateLengthMap(index: number, value?: number) {
         length_map[index] = value;
         console.log(`length ${index}: ${value}`);
     }

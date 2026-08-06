@@ -34,6 +34,22 @@ class LastSessionResponse(BaseModel):
     status_map: dict[str, KnownStatus]
 
 
+class StatusMapResponse(BaseModel):
+    status_map: dict[str, KnownStatus]
+
+
+class TexthookerLinesResponse(BaseModel):
+    lines: list[LineBase]
+    start: int
+    length: int
+
+
+class TexthookerStreamedLineResponse(BaseModel):
+    line: LineBase
+    idx: int
+
+
+
 class PresetInfo(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     ws_url: str = Field(min_length=1, max_length=100)
