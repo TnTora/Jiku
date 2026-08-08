@@ -371,7 +371,7 @@
 
     export function updateLengthMap(index: number, value?: number) {
         length_map[index] = value;
-        console.log(`length ${index}: ${value}`);
+        // console.log(`length ${index}: ${value}`);
     }
 
     function scheduled_scroll() {

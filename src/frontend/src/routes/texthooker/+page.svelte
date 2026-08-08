@@ -65,13 +65,13 @@
 
             buffer += decoder.decode(value, { stream: true });
 
-            console.log("value", buffer);
+            // console.log("value", buffer);
             const lines = buffer.split("\n");
             buffer = lines.pop() || "";
 
             for (const line of lines) {
                 const parsed: TexthookerStreamedLineResponse = JSON.parse(line);
-                console.log(parsed);
+                // console.log(parsed);
                 new_lines[parsed.idx] = parsed.line;
                 vlist.updateLengthMap(parsed.idx, undefined);
             }
