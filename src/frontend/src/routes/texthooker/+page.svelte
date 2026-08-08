@@ -376,8 +376,24 @@
         }, 100);
     }
 
+    let sel: HTMLSelectElement;
+    let template: HTMLSelectElement;
+    let template_opt: HTMLOptionElement;
+
+    function fitSelection() {
+        template.style.display = "block";
+        // console.log(template.getBoundingClientRect().width);
+        template_opt.text = sel.value;
+        const new_w = template.getBoundingClientRect().width;
+        template.style.display = "none";
+        // console.log(template_opt.text);
+        // console.log(new_w);
+        sel.style.width = `${new_w}px`;
+        sel.style.display = "inline";
+    }
 
     onMount(() => {
+        fitSelection();
         if (data.lines_count > 2*data.chunk_size) {
             fetchLines({preset: preset_name, limit: data.lines_count-data.chunk_size, offset: data.chunk_size});
         }
@@ -462,12 +478,14 @@
         </VirtualList>
     {/if}
 
-    <div class="grow-0 shrink-0 w-full bottom-0 pt-0.5 pb-1 flex items-center justify-end gap-4 text-xs text-neutral-500 border-t border-neutral-700 bg-neutral-800 z-10">   
-        <div class="absolute left-[50%] -translate-x-[50%] flex items-center justify-between gap-4 px-2">
+    <div class="grow-0 shrink-0 w-full bottom-0 pt-0.5 pb-1 flex items-center justify-between gap-4 text-xs text-neutral-500 border-t border-neutral-700 bg-neutral-800 z-10">   
+        <div class="relative left-[50%] -translate-x-[50%] flex items-center justify-between gap-4 px-2">
             <label for="preset">Preset:</label>
-            <select id="preset" bind:value={preset_name}
-                class="max-w-40"
+            <select bind:this={sel} id="preset" bind:value={preset_name}
+                class="max-w-60"
+                style="display:none;"
                 onchange={(event) => {
+                    fitSelection();
                     const new_preset = (event.target as HTMLSelectElement).value;
                     window.location.href = `?preset=${new_preset}`;
                 }}
@@ -482,6 +500,11 @@
     </div>
 
 </div>
+
+<select bind:this={template} id="hidden-sel" class="none" style="display:none;">
+    <option bind:this={template_opt} id="hidden-sel-option"></option>
+</select>
+
 
 <style>
     .shimmer {
