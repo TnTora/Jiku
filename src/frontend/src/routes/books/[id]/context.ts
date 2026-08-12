@@ -1,7 +1,7 @@
 import { createContext } from "svelte";
 
 export interface EbookReaderOptions {
-    // font?: string,
+    font?: string,
     font_size: number,
     line_height: number,
     vertical: boolean,

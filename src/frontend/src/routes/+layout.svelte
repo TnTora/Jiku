@@ -1,4 +1,9 @@
 <script lang="ts">
+	import '@fontsource/dotgothic16';
+	import '@fontsource/klee-one';
+	import '@fontsource/noto-sans-jp';
+	import '@fontsource/zen-old-mincho';
+
 	import './layout.css';
 	import { browser } from '$app/environment';
 	import favicon from '$lib/assets/favicon.svg';
