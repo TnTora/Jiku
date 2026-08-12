@@ -1,7 +1,7 @@
 <script lang="ts"  generics="T">
 	import { createRafHandler } from '$lib/utils/raf';
 	import { onMount, tick, untrack, type Snippet } from 'svelte';
-    import { type SvelteHTMLElements } from 'svelte/elements';
+    import type { SvelteHTMLElements } from 'svelte/elements';
 
     interface VisibleItem {
         item: T,
@@ -159,7 +159,7 @@
             return;
         }
 
-        console.log("old_items_length", old_items_length, "items.length", items.length, "old_container_offlength", old_container_offlength, "container_offlength", container_offlength);
+        // console.log("old_items_length", old_items_length, "items.length", items.length, "old_container_offlength", old_container_offlength, "container_offlength", container_offlength);
 
         const needs_refresh = ((items.length < old_items_length) || (container_offlength > old_container_offlength));
         old_items_length = items.length;

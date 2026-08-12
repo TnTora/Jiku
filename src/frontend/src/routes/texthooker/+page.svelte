@@ -2,7 +2,7 @@
     import { browser } from "$app/environment";
     import { page } from "$app/state";
     import { getJikuErrorsContext } from "$lib/utils/context.svelte.js";
-    import { setTextHookerOptionsContext, type TextHookerOptions } from "./context.js";
+    import { default_texthooker_options, setTextHookerOptionsContext, type TextHookerOptions } from "./context.js";
     import TexthookerLine from "$lib/components/TexthookerLine.svelte";
     import TopBar from "./TopBar.svelte";
     import OptionPanel from "./OptionPanel.svelte";
@@ -14,7 +14,7 @@
 
     interface TmpLine {
         id: number,
-        raw: string,
+        text: string,
         line: Promise<LineBase> | LineBase,
     }
 
@@ -31,10 +31,13 @@
     let new_lines: (LineBase|TmpLine|number)[] = $state(Array.from({ length: data.lines_count }, () => 30+Math.floor(Math.random()*60)));
     // let new_lines: (LineBase|TmpLine)[] = $state(Array(data.lines_count));
     let load_failed = $state(false);
+    let loading = true;
+    let last_chunk_start = data.lines_count - data.chunk_size;
+    let deleted_during_loading = 0;
 
     // $effect(() => {
     //     $inspect(new_lines);
-    //     $inspect(status_map);
+    //     // $inspect(status_map);
     // })
 
     // svelte-ignore non_reactive_update
@@ -60,6 +63,15 @@
             const { done, value } = await reader.read();
 
             if (done) {
+                loading = false;
+                // console.log(new_lines);
+                // let skipped = 0;
+                // for (const line of new_lines) {
+                //     if (typeof line === 'number') {
+                //         skipped++;
+                //     }
+                // }
+                // console.log("skipped", skipped);
                 return;
             }
 
@@ -72,7 +84,7 @@
             for (const line of lines) {
                 const parsed: TexthookerStreamedLineResponse = JSON.parse(line);
                 // console.log(parsed);
-                new_lines[parsed.idx] = parsed.line;
+                new_lines[parsed.idx - deleted_during_loading] = parsed.line;
                 vlist.updateLengthMap(parsed.idx, undefined);
             }
 
@@ -122,14 +134,17 @@
             }
             
             if (stored) {
-                return JSON.parse(stored);
+                let tmp = JSON.parse(stored);
+
+                Object.keys(default_texthooker_options).forEach((key) => {
+                    if (tmp[key] === undefined) {
+                        tmp[key] = default_texthooker_options[(key as keyof typeof default_texthooker_options)];
+                    }
+                });
+
+                return tmp;
             } else {
-                return {
-                    websocket_url: "ws://localhost:6677",
-                    font_size: 22,
-                    line_height: 1.75,
-                    vertical: false,
-                }
+                return default_texthooker_options;
             }
 
         }
@@ -193,7 +208,6 @@
     function isNearBottom(threshold = 100) {
         const rect = text_container.getBoundingClientRect();
         const scrollBottom = text_container.scrollTop + rect.height;
-        console.log(scrollBottom, text_container.scrollHeight);
         return scrollBottom + threshold >= text_container.scrollHeight;
     }
 
@@ -276,9 +290,22 @@
     let new_line_tmp_id = -1;
 
     function addNewLine(new_line: string) {
+        let i = new_lines.length-1;
+        let repetition = 0;
+
+        while (i >= 0 && (new_lines[i] as LineBase).text === new_line) {
+            repetition++;
+            i--;
+        }
+
+        console.log("repetition", repetition);
+
+        if (repetition > options.max_repetition) { return; }
+
+
         let tmp: TmpLine = $state({
             id: new_line_tmp_id,
-            raw: new_line,
+            text: new_line,
             line: processNewLine(new_line),
         });
         const curr_tmp_id = new_line_tmp_id;
@@ -427,7 +454,7 @@
             {buffer}
             id="texthooker-container"
             class="relative pt-10 pb-6 w-full grow overflow-auto {options.vertical? "vert-rl pl-5 pr-2": ""}"
-            style="line-height: {options.line_height};"
+            style="line-height: {options.line_height};{options.font? `font-family: ${options.font};`: ""}"
         >
             {#snippet render_item(line, index)}
                 {#if typeof line === 'number' }
@@ -450,7 +477,7 @@
                             //     }
                             // }}
                         >
-                            {line.raw}
+                            {line.text}
                         </p>
                     {:else if isLineBase(line.line)} 
                         <TexthookerLine line={line.line} status_map={status_map}
@@ -470,7 +497,14 @@
                     <!-- last session line -->
                     <TexthookerLine {line} status_map={status_map}
                         delete_func={() => {
-                            deleteLine(line.id);
+                            deleteLine(line.id).then(
+                                () => { 
+                                    if (loading && index < last_chunk_start) { 
+                                        deleted_during_loading++;
+                                        last_chunk_start--;
+                                    }
+                                }
+                            );
                         }}
                     />
                 {/if}
