@@ -450,6 +450,7 @@ def content_tokenization(soup: BeautifulSoup, stats: BookStats):
 
 def handle_html_node(node: PageElement, context: TokenizationContext) -> None:
     # print("node", node)
+    # print("curr_token", context.curr_token.inflection)
     # print("handle", context.new_content)
     if context.tokens_exhausted:
         context.new_content.append(str(node))
@@ -574,7 +575,6 @@ def handle_ruby(node: Tag, context: TokenizationContext):
             continue
 
         starting_token = context.curr_token
-        mid_token = context.partial_match_end_idx > 0
 
         if open_tag_idx < 0:
             open_tag_idx = len(context.new_content)
@@ -584,6 +584,9 @@ def handle_ruby(node: Tag, context: TokenizationContext):
             rt.append(child.next_sibling.get_text())
 
         handle_html_node(child, context)
+
+        mid_token = context.partial_match_end_idx > 0
+        # print("starting_token", starting_token.inflection, "context.curr_token", context.curr_token.inflection, "mid_token", mid_token)
 
         if starting_token != context.curr_token:
             if mid_token:
