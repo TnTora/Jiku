@@ -3,6 +3,8 @@
     import Toggle from "$lib/components/Toggle.svelte";
     import SelectOption from "$lib/components/SelectOption.svelte";
     import { clickOutside } from "$lib/utils/clickOutside.js";
+	import CustomNumberInput from "$lib/components/CustomNumberInput.svelte";
+	import FontSelect from "$lib/components/FontSelect.svelte";
 
 
     let { onoutsideclick }: {onoutsideclick: () => void} = $props();
@@ -20,6 +22,9 @@
     {onoutsideclick}
     class="w-100 max-w-screen grid grid-cols-[auto_auto] items-center justify-between gap-2 px-4 py-4 absolute top-2 right-3 z-20 bg-[#1B1B1B] border border-neutral-900 rounded-2xl"
 >
+
+    <!-- Layout -->
+
     <h2 class="{header_style}" style="margin-top:0;">Layout</h2>
 
     <div class="col-span-2">
@@ -30,22 +35,39 @@
         <SelectOption bind:selected_value={options.paginated} options={[{name: "Paginated", value: true}, {name: "Scroll", value: false}]} --height="2rem" />
     </div>
 
+    <!-- Style -->
+
     <h2 class="{header_style}">Style</h2>
 
+    <label for="font">Font</label>
+
+    <FontSelect id="font" bind:value={options.font} class="text-center"/>
+
+    <!-- <label for="custom_font">Custom Font</label>
+    <input id="custom_font" type="text" bind:value={options.font}> -->
+
     <label for="font_size">Font Size</label>
-    <div class="flex items-center mx-auto border border-neutral-600 bg-neutral-600 rounded-full">
-        <button onclick={() => { options.font_size-- }} class="w-7 h-7 pl-1 text-[0.7rem] rounded-l-full cursor-pointer bg-neutral-700 active:bg-neutral-600">A</button>
-        <input id="font_size" type="number" bind:value={options.font_size} class="w-9 h-7 text-sm text-center hide-input-spinners z-10">
-        <button onclick={() => { options.font_size++ }} class="w-7 h-7 pr-1 text-[1rem] rounded-r-full cursor-pointer bg-neutral-700 active:bg-neutral-600">A</button>
-    </div>
+
+    <CustomNumberInput 
+        id="font_size"
+        bind:value={options.font_size}
+        left_text="A"
+        right_text="A"
+        left_fn={() => { options.font_size-- }}
+        right_fn={() => { options.font_size++ }}
+        left_style="font-size: 0.7rem"
+    />
 
     <label for="line_height">Line Height</label>
-    <div class="flex items-center mx-auto border border-neutral-600 bg-neutral-600 rounded-full">
-        <button onclick={() => { options.line_height -= 0.25 }} class="w-7 h-7 pl-1 rounded-l-full cursor-pointer bg-neutral-700 active:bg-neutral-600">-</button>
-        <input id="line_height" type="number" bind:value={options.line_height} class="w-9 h-7 text-sm text-center hide-input-spinners z-10">
-        <button onclick={() => { options.line_height += 0.25 }} class="w-7 h-7 pr-1 rounded-r-full cursor-pointer bg-neutral-700 active:bg-neutral-600">+</button>
-    </div>
 
+    <CustomNumberInput 
+        id="line_height"
+        bind:value={options.line_height}
+        left_fn={() => { options.line_height -= 0.25 }}
+        right_fn={() => { options.line_height += 0.25 }}
+    />
+
+    <!-- Extra -->
 
     <h2 class="{header_style}">Extra</h2>
 

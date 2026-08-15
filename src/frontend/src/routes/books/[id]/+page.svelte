@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { tick } from "svelte";
     import { getJikuErrorsContext } from "$lib/utils/context.svelte.js";
-    import { setEbookReaderOptionsContext } from "./context";
+    import { default_ebookreader_options, setEbookReaderOptionsContext } from "./context";
     import { clickOutside } from "$lib/utils/clickOutside.js";
 	import TopBar from "./TopBar.svelte";
     import OptionPanel from "./OptionPanel.svelte";
@@ -47,17 +47,17 @@
         }
         
         if (stored) {
-            return JSON.parse(stored);
+            let tmp = JSON.parse(stored);
+
+            Object.keys(default_ebookreader_options).forEach((key) => {
+                if (tmp[key] === undefined) {
+                    tmp[key] = default_ebookreader_options[(key as keyof typeof default_ebookreader_options)];
+                }
+            });
+
+            return tmp;
         } else {
-            return {
-                font_size: 20,
-                line_height: 2.25,
-                vertical: true,
-                paginated: true,
-                show_progress_bar: true,
-                show_progress_tokens: true,
-                limit_progress_to_section: true,
-            }
+            return default_ebookreader_options;
         }
 
     }
@@ -105,8 +105,8 @@
     let stylesheets_elements = new Array<HTMLLinkElement>(book.stylesheets.length);
 
     $effect(() => {
-        console.log(book);
-        console.log(prev_section, next_section);
+        // console.log(book);
+        console.log("prev_section", prev_section, "next_section", next_section);
 
         stylesheets_elements.forEach((el) => {
             if (!el) {return};
@@ -729,7 +729,11 @@
             bind:this={book_container}
             id="jiku-book-container"
             class="{bookmarking? "bookmarking": ""} {options.vertical? "vert-rl" : "horz-tb"} {options.paginated? "paginated overflow-hidden": "overflow-scroll! p-12"} w-[calc(100%-2*var(--book-x-margin))]! bg-neutral-800!" 
-            style="--forced-line-height: {options.line_height}; font-size: {options.font_size}px; {options.paginated? "": "--book-x-margin: 0rem; --book-margin-top: 0rem; --book-margin-bottom: 0rem;"}"
+            style:--forced-line-height={options.line_height}
+            style:--forced-reader-font-family={options.font?? "inherit"}
+            style:font-size={`${options.font_size}px`}
+            // style:font-family={options.font?? "inherit"}
+            style="{options.paginated? "": "--book-x-margin: 0rem; --book-margin-top: 0rem; --book-margin-bottom: 0rem;"}"
         >
             {#if content}
                 <BookRender {content} onUpdateCallback={onBookContentUpdate}/>
@@ -767,7 +771,8 @@
 
 <style>
     :root {
-        --forced-line-height: 2;
+        /* --forced-line-height: 2;
+        --forced-reader-font-family: inherit; */
         --reader-height: calc(100vh - 3rem);
     }
 
@@ -779,7 +784,8 @@
     }
 
     :global #jiku-book-container p {
-        line-height: var(--forced-line-height) !important;
+        line-height: var(--forced-line-height, 2);
+        font-family: var(--forced-reader-font-family, inherit);
     }
 
     :global #jiku-book-container img,

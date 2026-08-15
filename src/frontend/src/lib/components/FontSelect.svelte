@@ -27,7 +27,19 @@
             value: "'Zen Old Mincho', serif",
         },
         {
-            name: "System Default",
+            name: "serif",
+            value: "serif",
+        },
+        {
+            name: "sans-serif",
+            value: "sans-serif",
+        },
+        {
+            name: "cursive",
+            value: "cursive",
+        },
+        {
+            name: "Default",
             value: undefined,
         },
     ];
