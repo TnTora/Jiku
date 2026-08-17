@@ -350,7 +350,15 @@
             });
 
             ws.addEventListener("message", (event) => {
-                let line = JSON.parse(event.data)?.sentence?? event.data;
+                if (!event.data) { return; }
+
+                let line;
+                try {
+                    line = JSON.parse(event.data).sentence;
+                } catch {
+                    line = event.data;
+                }
+                
                 // console.log(line);
                 addNewLine(line);
             })
