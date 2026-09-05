@@ -1,7 +1,7 @@
 <script lang="ts">
     import { browser } from "$app/environment";
     import { page } from "$app/state";
-    import { getJikuErrorsContext } from "$lib/utils/context.svelte.js";
+    import { getConfirmationPopupContext, getJikuErrorsContext } from "$lib/utils/context.svelte.js";
     import { default_texthooker_options, setTextHookerOptionsContext, type TextHookerOptions } from "./context.js";
     import TexthookerLine from "$lib/components/TexthookerLine.svelte";
     import TopBar from "./TopBar.svelte";
@@ -34,6 +34,8 @@
     let loading = true;
     let last_chunk_start = data.lines_count - data.chunk_size;
     let deleted_during_loading = 0;
+
+    let confirmation_popup = getConfirmationPopupContext();
 
     // $effect(() => {
     //     $inspect(new_lines);
@@ -273,18 +275,18 @@
     }
 
     async function clearAllLines() {
-        await api_fetch(`texthooker/clear_lines/${preset_name}`, {
-                method: "DELETE",
-            }, {
-                err_msg: "Failed to clear lines",
-                err_context: errors,
-        });
-        
-        // new_lines.length = 0;
-        vlist.clearItems();
-        invalidateAll();
-        // new_lines = [];
-
+        confirmation_popup.text = "Delete all lines?";
+        confirmation_popup.onOk = async () => {
+            await api_fetch(`texthooker/clear_lines/${preset_name}`, {
+                    method: "DELETE",
+                }, {
+                    err_msg: "Failed to clear lines",
+                    err_context: errors,
+            });
+            vlist.clearItems();
+            invalidateAll();
+        };
+        confirmation_popup.show = true;
     }
 
     let new_line_tmp_id = -1;
