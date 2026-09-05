@@ -106,12 +106,13 @@
 
     $effect(() => {
         // console.log("start", start);
-        const sync = { start };
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const sync = { start };
         let new_content_length = 0;
         for (let j = 0; j < visible_html_elements.length; j++) {
             if (!visible_html_elements[j]) { continue; }
 
-            const item_index = start + j;
+            // const item_index = start + j;
             const item_index_data = Number(visible_html_elements[j].dataset.originalIndex);
 
             if (length_map[item_index_data] === undefined) {
@@ -161,7 +162,7 @@
 
         // console.log("old_items_length", old_items_length, "items.length", items.length, "old_container_offlength", old_container_offlength, "container_offlength", container_offlength);
 
-        const needs_refresh = ((items.length < old_items_length) || (container_offlength > old_container_offlength));
+        const needs_refresh = ((items.length < old_items_length) || (container_offlength > old_container_offlength) || (rendered_length < container_offlength));
         old_items_length = items.length;
         old_container_offlength = container_offlength;
 
