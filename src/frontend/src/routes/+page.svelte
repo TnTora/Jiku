@@ -152,6 +152,7 @@
             err_msg: "Failed to update anki info",
             err_context: errors,
         });
+        invalidateAll();
         alert("Anki info updated");
     }
 
