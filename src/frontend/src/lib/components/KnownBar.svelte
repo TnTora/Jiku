@@ -8,22 +8,26 @@
     let sync_task_context = getSyncTasksContext();
 
     async function startSync() {
+        api_fetch("anki/sync_morphemes", {
+            method: "PUT"
+        });
         sync_task_context.connect();
-        const tmp_progress = {
+
+        if (sync_task_context.sync_task === null) {
+            const tmp_progress = {
             current_rule_name: "",
             current_rule: 0,
             total_rules: -1,
             current_note: 0,
             total_notes: -1,
-        }
-        sync_task_context.sync_task = {
-            id: "tmp",
-            progress: tmp_progress,
-            status: "WAITING",
-        };
-        await api_fetch("anki/sync_morphemes", {
-            method: "PUT"
-        });
+            }
+            sync_task_context.sync_task = {
+                id: "tmp",
+                progress: tmp_progress,
+                status: "WAITING",
+            };
+        } 
+
     }
 
 </script>
