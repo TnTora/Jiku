@@ -489,7 +489,10 @@ def clear_all_tasks():
 
 @router.get("/tasks_events", response_class=EventSourceResponse)
 async def tasks_events():
-    print("tasks_events")
+    if not active_tasks_ids:
+        yield ServerSentEvent(event="close", data="")
+        return
+
     async with redis.Redis(host=redis_host, port=6379, db=1, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
         await pubsub.subscribe("__keyevent@1__:set")
 

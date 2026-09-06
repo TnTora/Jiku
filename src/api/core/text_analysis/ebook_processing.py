@@ -589,6 +589,7 @@ def handle_ruby(node: Tag, context: TokenizationContext):
         # print("starting_token", starting_token.inflection, "context.curr_token", context.curr_token.inflection, "mid_token", mid_token)
 
         if starting_token != context.curr_token:
+            #TODO: test and reevaluate
             if mid_token:
                 context.new_content.insert(-1, f"<rt>{"".join(rt)}</rt>")
                 context.new_content.insert(-1, "</ruby>")

@@ -1,24 +1,25 @@
-from api.schemas.core import AnkiInfo
-from fastapi.sse import EventSourceResponse, ServerSentEvent
-from fastapi import APIRouter, status, Depends, HTTPException
-
-from api.db import get_db
-from api.db.models.core import Morpheme, Option, AnkiNoteMorpheme, AnkiNote, KnownStatus
-
-from api.schemas.core import KnownMorphemes
-from api.core.anki import get_decks, get_note_types, get_all_note_types_fields, update_morphemes_db, AnkiError
-from api.core.config.shared import redis_host
-from api.core.config import load_settings_from_db
-
-from sqlalchemy import select, distinct, func
-from sqlalchemy.orm import Session
-
-from datetime import datetime, timedelta, UTC
 import json
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Annotated
 
 import redis.asyncio as redis
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.sse import EventSourceResponse, ServerSentEvent
+from sqlalchemy import distinct, func, select
+from sqlalchemy.orm import Session
 
-from typing import Annotated, TYPE_CHECKING
+from api.core.anki import (
+    AnkiError,
+    get_all_note_types_fields,
+    get_decks,
+    get_note_types,
+    update_morphemes_db,
+)
+from api.core.config import load_settings_from_db
+from api.core.config.shared import redis_host
+from api.db import get_db
+from api.db.models.core import AnkiNote, AnkiNoteMorpheme, KnownStatus, Morpheme, Option
+from api.schemas.core import AnkiInfo, KnownMorphemes
 
 if TYPE_CHECKING:
     from celery.contrib.abortable import AbortableAsyncResult
@@ -114,6 +115,10 @@ def stop_morphemes_sync():
 @router.get("/sync_status", response_class=EventSourceResponse)
 async def sync_status():
     global syncing_morphs_id  # noqa: PLW0603
+
+    if not syncing_morphs_id:
+        yield ServerSentEvent(event="close", data="")
+        return
 
     print("sync_events")
     async with redis.Redis(host=redis_host, port=6379, db=1, decode_responses=True) as redisdb, redisdb.pubsub() as pubsub:
