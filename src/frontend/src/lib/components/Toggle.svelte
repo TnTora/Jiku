@@ -7,7 +7,7 @@
         onclick: () => void,
     }
 
-    let { option, title, height, onclick } = $props()
+    let { option, title, height, onclick }: Props = $props()
 </script>
 
 <button aria-pressed={option} {onclick} {title} 

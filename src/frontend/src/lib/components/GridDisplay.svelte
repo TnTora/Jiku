@@ -1,9 +1,6 @@
 <script lang="ts" generics="T">
     import { SvelteSet } from "svelte/reactivity";
-    import { getJikuErrorsContext } from "$lib/utils/context.svelte";
 	import type { Snippet } from "svelte";
-
-    const errors = getJikuErrorsContext();
 
     interface Props {
         items: Array<T>,
@@ -15,7 +12,7 @@
 
     let { items, selecting = $bindable(false), selected = $bindable(new SvelteSet()), item_min_w = null, children }: Props = $props();
 
-    function onItemClickCapture(item: any) {
+    function onItemClickCapture(item: T) {
         return (e: Event) => {
             if (!selecting) { return; }
 

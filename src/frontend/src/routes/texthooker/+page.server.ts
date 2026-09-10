@@ -7,21 +7,21 @@ export const load = async ({ fetch, url }) => {
 	//     const {lines, status_map} = <LastSessionResponse> await res.json();
     //     return {lines, status_map};
     // }
-    const curr_preset = url.searchParams.get("preset")?? "";
+    // const curr_preset = url.searchParams.get("preset")?? "";
 
     const fetchLinesCount = async () => {
-        let res = await fetch(`/api_bridge/texthooker/lines_count?${url.searchParams.toString()}`);
+        const res = await fetch(`/api_bridge/texthooker/lines_count?${url.searchParams.toString()}`);
 	    return <number> await res.json();
     }
 
     const fetchLines = async (limit: number, offset: number) => {
-        let res = await fetch(`/api_bridge/texthooker/lines?${url.searchParams.toString()}&limit=${limit}&offset=${offset}`);
+        const res = await fetch(`/api_bridge/texthooker/lines?${url.searchParams.toString()}&limit=${limit}&offset=${offset}`);
 	    const {lines, start, length } = <TexthookerLinesResponse> await res.json();
         return {lines, start, length};
     }
 
     const fetchStatusMap = async () => {
-        let res = await fetch(`/api_bridge/texthooker/status_map?${url.searchParams.toString()}`);
+        const res = await fetch(`/api_bridge/texthooker/status_map?${url.searchParams.toString()}`);
 	    const { status_map } = <StatusMapResponse> await res.json();
         return status_map;
     }

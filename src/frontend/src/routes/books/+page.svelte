@@ -1,4 +1,6 @@
 <script lang="ts">
+    /* eslint-disable svelte/no-navigation-without-resolve */
+
     import { fly } from "svelte/transition";
     import { SvelteSet } from "svelte/reactivity";
     import { page } from "$app/state";
@@ -9,7 +11,7 @@
     import { getJikuErrorsContext } from "$lib/utils/context.svelte.js";
     import { getConfirmationPopupContext } from "$lib/utils/context.svelte.js";
     import { setSelectColelctionPopupContext } from "./context.js";
-	import { goto, invalidate, invalidateAll } from "$app/navigation";
+	import { goto, invalidateAll } from "$app/navigation";
 	import { onMount } from "svelte";
 
     import { addBookToCollection, api_fetch } from "$lib/utils/requests";
@@ -82,7 +84,7 @@
 
 
     function deleteSelectedBooks() {
-        let tasks: Promise<any>[] = [];
+        let tasks: Promise<Response>[] = [];
         for (const book of selected) {
             tasks.push(api_fetch(
                 `books/delete_book/${book.id}`, {
@@ -99,7 +101,7 @@
 
 
     function removeSelectedBooksFromCollection() {
-        let tasks: Promise<any>[] = [];
+        let tasks: Promise<Response>[] = [];
         for (const book of selected) {
             tasks.push(
                 api_fetch("books/remove_from_collection", {
@@ -124,6 +126,7 @@
 
 
     function modifiedSearchParams( key: string, value: string) {
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const search_params = new URLSearchParams(page.url.searchParams);
         if (value) {
             search_params.set(key, value);
@@ -205,6 +208,7 @@
                     id="order-by"
                     class="px-2 py-1 text-sm field-sizing-content text-center bg-neutral-900 border-neutral-900 hover:bg-neutral-950 border rounded-lg"
                     onchange={function(this: HTMLSelectElement) {
+                        // eslint-disable-next-line svelte/prefer-svelte-reactivity
                         const search_params = new URLSearchParams(page.url.searchParams);
                         if (Number(this.value) > 0) {
                             search_params.set("asc", "no");

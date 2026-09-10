@@ -2,7 +2,7 @@ import { createContext, getContext, setContext } from "svelte";
 
 export interface JikuError {
     short: string,
-    details?: any,
+    details?: unknown,
 }
 
 export class JikuErrorsContext {
@@ -67,8 +67,8 @@ export function getJikuErrorsContext() {
 export interface ConfirmationPopupContext {
     show: boolean,
     text: string,
-    onOk: () => any,
-    onCancel: () => any,
+    onOk: () => void,
+    onCancel: () => void,
 }
 
 export const [getConfirmationPopupContext, setConfirmationPopupContext] = createContext<ConfirmationPopupContext>();
@@ -78,8 +78,8 @@ export interface TextInputPopupContext {
     text: string,
     text_input_value: string | null,
     text_input_default: string,
-    onOk: () => any,
-    onCancel: () => any,
+    onOk: () => void,
+    onCancel: () => void,
 }
 
 export const [getTextInputPopupContext, setTextInputPopupContext] = createContext<TextInputPopupContext>();

@@ -73,12 +73,12 @@
 
     <span>Show Progress Bar</span>
     <div class="toggle">
-        <Toggle option={options.show_progress_bar} title={"Show Progress Bar"} height={1.25}  onclick={toggleOption("show_progress_bar")}/>
+        <Toggle option={options.show_progress_bar} title="Show Progress Bar" height={1.25}  onclick={toggleOption("show_progress_bar")}/>
     </div>
 
     <span>Show Tokens Progress</span>
     <div class="toggle">
-        <Toggle option={options.show_progress_tokens} title={"Show Tokens Progress"} height={1.25}  onclick={toggleOption("show_progress_tokens")}/>
+        <Toggle option={options.show_progress_tokens} title="Show Tokens Progress" height={1.25}  onclick={toggleOption("show_progress_tokens")}/>
     </div>
 
     <div class="col-span-2">

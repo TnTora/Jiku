@@ -1,4 +1,6 @@
 <script lang="ts">
+    /* eslint-disable svelte/no-navigation-without-resolve */
+
     import { getJikuErrorsContext, getTextInputPopupContext, getConfirmationPopupContext } from "$lib/utils/context.svelte";
     import { page } from "$app/state";
 	import { goto } from "$app/navigation";
@@ -35,24 +37,21 @@
         let new_collection: CollectionInfoResponse;
         let name = text_input_popup.text_input_value;
 
-        try {
-            let res = await api_fetch("books/add_collection/", {
-                method: "POST",
-                headers: {
-                    "accept": "application/json",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name: name
-                } as CollectionCreate)
-            }, {
-                err_msg: "Failed to add new collection",
-                err_context: errors,
-            });
-            new_collection = await res.json();
-        } catch (error) {
-            throw error;
-        }
+        let res = await api_fetch("books/add_collection/", {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                name: name
+            } as CollectionCreate)
+        }, {
+            err_msg: "Failed to add new collection",
+            err_context: errors,
+        });
+        new_collection = await res.json();
+
 
         if (new_collection) {
             collections.push(new_collection);
@@ -131,8 +130,8 @@
                                 try {
                                     await renameCollection(collection.id)
                                     collection.name = text_input_popup.text_input_value;
-                                } catch (error: any) {
-                                    console.error(error.message);
+                                } catch (error: unknown) {
+                                    console.error(error);
                                 }
 
                             }

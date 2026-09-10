@@ -1,15 +1,16 @@
-<script lang="ts">
+<script lang="ts" generics="T">
     interface Option {
         name: string,
-        value: any,
+        value: T,
     }
 
-    interface Props {
+    interface Props {
         options: Option[],
         selected_name?: string,
-        selected_value?: any,
+        selected_value?: T,
     }
 
+    // eslint-disable-next-line no-useless-assignment
     let { options, selected_name = $bindable(), selected_value = $bindable() }: Props = $props();
     
     selected_name = options.filter((option) => option.value == selected_value)[0].name;
@@ -20,7 +21,10 @@
     style="--opt-length: {options.length};">
     {#each options as option}
         <button 
-            onclick={() => {(selected_name = option.name, selected_value = option.value)}}
+            onclick={() => {
+                selected_name = option.name;
+                selected_value = option.value;
+            }}
             class="bg-neutral-500 w-full h-full flex items-center justify-center {(selected_name == option.name)? "selected bg-[#0062ff]!": ""}"
         >
             <span>{option.name}</span>

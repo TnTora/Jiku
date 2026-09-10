@@ -11,6 +11,7 @@
 	import type { KnownStatus, LineBase, LineCreate, LineResponse, PresetUpdate, TexthookerStreamedLineResponse } from "$lib/api_types/texthooker.js";
 	import VirtualList from "$lib/components/VirtualList.svelte";
 	import { onMount, tick } from "svelte";
+	import { resolve } from "$app/paths";
 
     interface TmpLine {
         id: number,
@@ -46,9 +47,11 @@
     let preset_name: string = page.url.searchParams.get("preset")?? "";
 
     if (browser) {
-        // svelte-ignore state_referenced_locally
         if (!preset_name || !data.presets.includes(preset_name)) {
-            goto(`/texthooker?preset=Default`);
+            console.log("redirecting to default");
+            // eslint-disable-next-line svelte/no-navigation-without-resolve
+            goto(resolve("/texthooker") + "?preset=Default");
+
         }
     }
 
@@ -66,14 +69,6 @@
 
             if (done) {
                 loading = false;
-                // console.log(new_lines);
-                // let skipped = 0;
-                // for (const line of new_lines) {
-                //     if (typeof line === 'number') {
-                //         skipped++;
-                //     }
-                // }
-                // console.log("skipped", skipped);
                 return;
             }
 

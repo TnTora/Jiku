@@ -8,7 +8,7 @@
     import OptionPanel from "./OptionPanel.svelte";
     import SidePanel from "./SidePanel.svelte";
     import BookRender from "./BookRender.svelte";
-	import { goto, invalidateAll } from "$app/navigation";
+	import { invalidateAll } from "$app/navigation";
 	import TextInputPopup from "$lib/components/TextInputPopup.svelte";
 	import { browser } from "$app/environment";
 	import ConfirmationPopup from "$lib/components/ConfirmationPopup.svelte";
@@ -122,7 +122,7 @@
 
     });
 
-    let section_page: number = 0;
+    // let section_page: number = 0;
 
     // console.log(curr_section);
 
@@ -284,7 +284,7 @@
         });
     
         let resize_timeout: NodeJS.Timeout;
-        resize_observer = new ResizeObserver(entries => {
+        resize_observer = new ResizeObserver(() => {
             if (!book_container) {return}
 
             intersection_observer.disconnect();
@@ -361,28 +361,24 @@
 
         let new_bookmark: BookmarkResponse;
 
-        try {
-            const res = await api_fetch("books/add_bookmark", {
-                method: "POST",
-                headers: {
-                    "accept": "application/json",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    book_id: book.id,
-                    name: bookmark_selection_name,
-                    preview: bookmark_selection_preview,
-                    section: curr_section,
-                    tok_pos: bookmark_selection,
-                } as BookmarkCreate)
-                }, {
-                    err_msg: "Failed to add Bookmark",
-                    err_context: errors,
-            });
-            new_bookmark = await res.json();
-        } catch (error) {
-            throw error;
-        }
+        const res = await api_fetch("books/add_bookmark", {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                book_id: book.id,
+                name: bookmark_selection_name,
+                preview: bookmark_selection_preview,
+                section: curr_section,
+                tok_pos: bookmark_selection,
+            } as BookmarkCreate)
+            }, {
+                err_msg: "Failed to add Bookmark",
+                err_context: errors,
+        });
+        new_bookmark = await res.json();
 
         book.bookmarks.push(new_bookmark);
     }
@@ -534,6 +530,7 @@
     }
 
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let status_style: HTMLStyleElement;
 
     onMount(() => {

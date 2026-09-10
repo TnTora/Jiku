@@ -3,7 +3,7 @@ import type { RequestHandler } from "./$types";
 
 // https://grantyap.com/blog/forwarding-requests-to-api-endpoints-in-sveltekit-without-a-reverse-proxy
 const handle: RequestHandler = async ({ url, params, request, fetch }) => {
-	const { endpoint } = params;
+	// const { endpoint } = params;
 
 	let api_url = `http://${env.BACKEND_HOST}:${env.BACKEND_PORT}/${params.endpoint}`;
     const search_params = url.searchParams.toString();

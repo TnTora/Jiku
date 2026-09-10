@@ -25,24 +25,21 @@
     async function renameBookmark(bookmark_id:number) {
         let name = text_input_popup.text_input_value;
 
-        try {
-            await api_fetch("books/rename_bookmark/", {
-                    method: "PUT",
-                    headers: {
-                        "accept": "application/json",
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        id: bookmark_id,
-                        name: name
-                    })
-                }, {
-                    err_msg: "Failed to rename bookmark",
-                    err_context: errors
-            });
-        } catch (error) {
-            throw error;
-        }
+        await api_fetch("books/rename_bookmark/", {
+                method: "PUT",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    id: bookmark_id,
+                    name: name
+                })
+            }, {
+                err_msg: "Failed to rename bookmark",
+                err_context: errors
+        });
+
     }
 
 

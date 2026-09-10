@@ -1,16 +1,16 @@
-<script lang="ts">
+<script lang="ts" generics="T">
     import ConfirmationPopup from "./ConfirmationPopup.svelte";
     import { onMount } from "svelte";
 
     interface Option {
         name: string, 
-        value: any
+        value: T
     }
 
     interface Props {
         text: string,
         options: Option[]
-        select_value: any,
+        select_value: T | null,
         onOk: () => void,
         onCancel: () => void,
     }

@@ -17,21 +17,21 @@ export async function api_fetch(
     }
 
     try {
-        let res = await fetch(`/api_bridge/${url}`, fetch_params);
+        const res = await fetch(`/api_bridge/${url}`, fetch_params);
         // console.log(res);
         if (!res.ok) {
             const err_string = JSON.stringify(await res.json());
             throw new Error(err_string);
         }
         return res;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(`Error: ${err_params.err_msg}`, error);
         if (err_params.err_context) {
-            let new_err: JikuError = {
+            const new_err: JikuError = {
                 short: err_params.err_msg
             }
 
-            if (error.message) {
+            if (error instanceof Error && error.message) {
                 new_err.details = error.message;
             }
 

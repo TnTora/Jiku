@@ -39,7 +39,7 @@
 	}
 
 
-	const errors_context = setJikuErrorsContext();
+	setJikuErrorsContext();
 	const task_context = setTasksContext("/api_bridge/books/tasks_events");
 
 	const sync_task_context = setSyncTaskContext("/api_bridge/anki/sync_status");
@@ -79,7 +79,7 @@
 		confirmation_popup.onCancel = () => {};
     }
 
-	function modalOkWrapper(modalFunc: () => any) {
+	function modalOkWrapper(modalFunc: () => void) {
 		return () => {
 			let res = modalFunc();
 			Promise.resolve(res).then(

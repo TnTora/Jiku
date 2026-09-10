@@ -10,6 +10,7 @@
 	import { invalidateAll } from "$app/navigation";
 	import { page } from "$app/state";
 	import type { BookInfoResponse, BookProgressStatusUpdate } from "$lib/api_types/books";
+	import { resolve } from "$app/paths";
 
     const confirmation_popup = getConfirmationPopupContext();
     const select_collection_popup = getSelectCollectionPopupContext();
@@ -80,7 +81,7 @@
 </script>
 
 
-<a href="{`/books/${item.id}`}" class="h-full w-full">
+<a href={resolve('/books/[id]', {id: item.id.toString()})} class="h-full w-full">
     <div
         class="book-item relative border border-neutral-600 active:border-neutral-400 active:border-2 bg-neutral-700 w-full h-full rounded-sm overflow-hidden cursor-pointer"
         style="{item.thumb? `background-image: url(${item.static_url}/${item.id}/images/${item.thumb});`: ""}"
