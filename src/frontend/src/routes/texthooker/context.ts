@@ -7,6 +7,8 @@ export interface TextHookerOptions {
     max_repetition: number,
     vertical: boolean,
     websocket_url?: string,
+    text_col: string,
+    bg_col: string,
 }
 
 export const [getTextHookerOptionsContext, setTextHookerOptionsContext] = createContext<TextHookerOptions>();
@@ -18,4 +20,6 @@ export const default_texthooker_options: TextHookerOptions = {
     max_repetition: 0,
     vertical: false,
     websocket_url: "ws://localhost:6677",
+    text_col: "#f3f3f3",
+    bg_col: "#252525",
 }

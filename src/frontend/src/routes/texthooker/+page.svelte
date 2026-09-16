@@ -49,8 +49,9 @@
     if (browser) {
         if (!preset_name || !data.presets.includes(preset_name)) {
             console.log("redirecting to default");
+            window.location.href = "/texthooker?preset=Default";
             // eslint-disable-next-line svelte/no-navigation-without-resolve
-            goto(resolve("/texthooker") + "?preset=Default");
+            // goto(resolve("/texthooker") + "?preset=Default");
 
         }
     }
@@ -132,7 +133,19 @@
             
             if (stored) {
                 let tmp = JSON.parse(stored);
+                const default_stored = localStorage.getItem("texthooker_preset_Default");
 
+                if (default_stored) {
+                    // Complete with user selected default
+                    const default_values = JSON.parse(default_stored);
+                    Object.keys(default_values).forEach((key) => {
+                        if (tmp[key] === undefined) {
+                            tmp[key] = default_values[(key as keyof typeof default_values)];
+                        }
+                    });
+                }
+
+                // Add eventual new options default
                 Object.keys(default_texthooker_options).forEach((key) => {
                     if (tmp[key] === undefined) {
                         tmp[key] = default_texthooker_options[(key as keyof typeof default_texthooker_options)];
@@ -459,7 +472,7 @@
             {buffer}
             id="texthooker-container"
             class="relative pt-10 pb-6 w-full grow overflow-auto {options.vertical? "vert-rl pl-5 pr-2": ""}"
-            style="line-height: {options.line_height};{options.font? `font-family: ${options.font};`: ""}"
+            style="background-color:{options.bg_col}; color: {options.text_col} ;line-height: {options.line_height};{options.font? `font-family: ${options.font};`: ""}"
         >
             {#snippet render_item(line, index)}
                 {#if typeof line === 'number' }
