@@ -3,7 +3,7 @@
 
     import KnownBar from "$lib/components/KnownBar.svelte";
     import BookCarousel from "$lib/components/BookCarousel.svelte";
-	import { getJikuErrorsContext, getTextInputPopupContext } from "$lib/utils/context.svelte.js";
+	import { getConfirmationPopupContext, getJikuErrorsContext, getTextInputPopupContext } from "$lib/utils/context.svelte.js";
 	import { invalidateAll } from "$app/navigation";
 	import { api_fetch } from "$lib/utils/requests";
 	import type { AnkiSettings } from "$lib/api_types/core.js";
@@ -14,6 +14,7 @@
     let btn_shared = "bg-neutral-700 hover:bg-neutral-900 active:bg-neutral-950 cursor-pointer";
 
     let text_input_popup = getTextInputPopupContext();
+    let confirmation_popup = getConfirmationPopupContext();
     let errors = getJikuErrorsContext();
 
     interface PresetInfo {
@@ -25,11 +26,6 @@
     // svelte-ignore state_referenced_locally
     let presets_name_ws: PresetInfo[] = $state(data.presets_info);
     let adding_preset: boolean = $state(false);
-    let preset_base = {
-        font_size: 22,
-        line_height: 1.75,
-        vertical: false,
-    };
 
     // svelte-ignore state_referenced_locally
     let anki_port: number = $state(data.anki_settings.port);
@@ -73,15 +69,12 @@
 
         let new_preset = {
             websocket_url: preset_ws,
-            font_size: preset_base.font_size,
-            line_height: preset_base.line_height,
-            vertical: preset_base.vertical,
         }
         localStorage.setItem(`texthooker_preset_${preset_name}`, JSON.stringify(new_preset));
     
         presets_name_ws.push({
             name: preset_name,
-            ws_url: new_preset.websocket_url
+            ws_url: preset_ws
         });
         invalidateAll();
         adding_preset = false;
@@ -247,7 +240,13 @@
                                 </svg>
                             </button>
                             
-                            {@render delete_button(() => {deletePreset(preset_info.name)})}
+                            {@render delete_button(() => {
+                                confirmation_popup.text = `Delete preset '${preset_info.name}'?`
+                                confirmation_popup.onOk = () => {
+                                    deletePreset(preset_info.name);
+                                };
+                                confirmation_popup.show = true;
+                            })}
                         </div>
                     {/if}
                 </li>
