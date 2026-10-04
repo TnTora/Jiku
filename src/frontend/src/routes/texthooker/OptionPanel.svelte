@@ -6,6 +6,7 @@
 	import FontSelect from "$lib/components/FontSelect.svelte";
 	import { getConfirmationPopupContext, getJikuErrorsContext, getTextInputPopupContext } from "$lib/utils/context.svelte";
 	import { api_fetch } from "$lib/utils/requests";
+	import Toggle from "$lib/components/Toggle.svelte";
 
     interface Props {
         onoutsideclick: () => void,
@@ -146,6 +147,15 @@
         bind:value={options.max_repetition}
         left_fn={() => { options.max_repetition = Math.max(0, options.max_repetition-1) }}
         right_fn={() => { options.max_repetition++ }}
+    />
+
+    <span>Persist Selection</span>
+    <Toggle
+        option={options.persist_selection}
+        title="Persist Selection"
+        height={1.25}
+        extra_style="margin-inline: auto;"
+        onclick={() => { options.persist_selection = !options.persist_selection; }}
     />
     
 

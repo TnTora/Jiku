@@ -9,6 +9,7 @@ export interface TextHookerOptions {
     websocket_url?: string,
     text_col: string,
     bg_col: string,
+    persist_selection: boolean,
 }
 
 export const [getTextHookerOptionsContext, setTextHookerOptionsContext] = createContext<TextHookerOptions>();
@@ -22,4 +23,5 @@ export const default_texthooker_options: TextHookerOptions = {
     websocket_url: "ws://localhost:6677",
     text_col: "#f3f3f3",
     bg_col: "#252525",
+    persist_selection: true,
 }
