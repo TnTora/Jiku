@@ -17,7 +17,8 @@
         buffer?: number,
         start_idx?: number,
         end_idx?: number,
-        container?: HTMLDivElement
+        container?: HTMLDivElement,
+        persist_selection?: boolean,
         render_item: Snippet<[T, number]>
     }
 
@@ -30,6 +31,7 @@
         end_idx = $bindable(0),
         // eslint-disable-next-line no-useless-assignment
         container = $bindable(),
+        persist_selection = false,
         render_item,
         ...rest
     }: Props = $props();
@@ -322,6 +324,21 @@
 
             list_container.scrollBy(target);
         }
+
+        // console.log("saved_sel", saved_sel);
+        if (persist_selection) {
+            const sel = window.getSelection();
+            if (saved_sel.text) {
+                if ((start <= saved_sel.start_id && saved_sel.start_id < end)  || (start <= saved_sel.end_id && saved_sel.end_id < end)) {
+                    await tick();
+                    restoreSelection();
+                } else {
+                    sel?.empty();
+                }
+            } else if (sel?.rangeCount) {
+                sel?.empty();
+            }
+        }
 	}
 
 
@@ -379,6 +396,196 @@
     function scheduled_scroll() {
         rafHandler(handle_scroll);
     }
+
+    interface SavedSelection {
+        start_id: number,
+        start_offset: number,
+        end_id: number,
+        end_offset: number,
+        text: string,
+    }
+
+    let saved_sel: SavedSelection = {
+        start_id: -1,
+        start_offset: 0,
+        end_id: -1,
+        end_offset: 0,
+        text: "",
+    };
+
+    function saveSelection() {
+        let sel = window.getSelection();
+        let text_sel = sel?.toString();
+        // console.log(text_sel);
+        if (!text_sel) { return; }
+
+        let range = sel?.getRangeAt(0);
+        // console.log(range);
+        if (!range) { return; }
+
+        let start_node: HTMLElement | Node | null = range.startContainer;
+        let start_id: number | null = null;
+
+        while (start_node && !start_id) {
+            if (start_node.nodeType === 1) {   
+                const data_id = (start_node as HTMLElement).getAttribute("data-original-index");
+                if (data_id) {
+                    start_id = Number(data_id);
+                    break;
+                }
+            }
+            start_node = start_node.parentElement;
+        }
+
+        // console.log(start_node, start_id);
+        if (!start_node || start_id === null) { return; }
+
+        let pre_selection_range = range.cloneRange();
+        pre_selection_range.selectNodeContents(start_node);
+        pre_selection_range.setEnd(range.startContainer, range.startOffset);
+        let start_offset = pre_selection_range.toString().length;
+
+
+
+        let end_node: HTMLElement | Node | null = range.endContainer;
+        let end_id: number | null = null;
+
+        while (end_node && !end_id) {
+            if (end_node.nodeType === 1) {   
+                const data_id = (end_node as HTMLElement).getAttribute("data-original-index");
+                if (data_id) {
+                    end_id = Number(data_id);
+                    break;
+                }
+            }
+            end_node = end_node.parentElement;
+        }
+
+        // console.log(end_node);
+        if (!end_node || end_id === null) { return; }
+
+        let end_selection_range = range.cloneRange();
+        end_selection_range.selectNodeContents(end_node);
+        end_selection_range.setEnd(range.endContainer, range.endOffset);
+        let end_offset = end_selection_range.toString().length;
+
+        return {
+            start_id: start_id,
+            start_offset: start_offset,
+            end_id: end_id,
+            end_offset: end_offset,
+            text: text_sel,
+        };
+    };
+
+    function restoreSelection() {
+        // console.log("restoring selection ", saved_sel);
+        if (!saved_sel.text) { return; }
+
+        let range = document.createRange();
+        range.setStart(list_container, 0);
+        range.collapse(true);
+
+        let char_index = 0;
+        let node, found_start = false;
+        let node_stack = [];
+        const start_line = document.querySelector(`div[data-original-index='${saved_sel.start_id}'`);
+        const end_line = document.querySelector(`div[data-original-index='${saved_sel.end_id}'`);
+
+        // console.log("start_line", start_line);
+        // console.log("end_line", end_line);
+
+        if (start_line) {
+            node_stack = [start_line];
+            while ((node = node_stack.pop())) {
+                if (node.nodeType == 3) {
+                    let next_char_index = char_index + node.length;
+                    if (saved_sel.start_offset >= char_index && saved_sel.start_offset <= next_char_index) {
+                        range.setStart(node, saved_sel.start_offset - char_index);
+                        found_start = true;
+                        if (saved_sel.start_offset < next_char_index) {
+                            node_stack.push(node);
+                        } else {
+                            char_index = next_char_index;
+                        }
+                        break;
+                    }
+                    char_index = next_char_index;
+                } else {
+                    let i = node.childNodes.length;
+                    while (i--) {
+                        node_stack.push(node.childNodes[i]);
+                    }
+                }
+            }
+        }
+
+        if (saved_sel.end_id !== saved_sel.start_id) {
+            char_index = 0;
+            node_stack = [end_line];
+        }
+
+        if (end_line) {
+            while ((node = node_stack.pop())) {
+                if (node.nodeType == 3) {
+                    let next_char_index = char_index + node.length;
+                    if (saved_sel.end_offset >= char_index && saved_sel.end_offset <= next_char_index) {
+                        range.setEnd(node, saved_sel.end_offset - char_index);
+                        break;
+                    }
+                    char_index = next_char_index;
+                } else {
+                    let i = node.childNodes.length;
+                    while (i--) {
+                        node_stack.push(node.childNodes[i]);
+                    }
+                }
+            }
+        } else if (found_start) {
+            const clone = range.cloneRange()
+            range.selectNodeContents(list_container);
+            range.setStart(clone.startContainer, clone.startOffset);
+        }
+
+        // console.log(range);
+
+        const sel = window.getSelection();
+        if (!sel) { return; }
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function clearSelection() {
+        // console.log("clearSelection");
+        // const sel = window.getSelection();
+        // if (!(event.target instanceof Element) || sel?.containsNode(event.target)) { return; }
+
+        if (saved_sel.text) {
+            saved_sel.text = "";
+            console.log("cleared selection", saved_sel);
+        }
+    }
+
+    function handleSelection() {
+        // console.log("selectionchange");
+        const curr_sel = saveSelection();
+        // console.log("curr_sel", curr_sel);
+        if (curr_sel) {
+            saved_sel = curr_sel;
+            console.log("saved_sel", saved_sel);
+        }
+    }
+
+    $effect(() => {
+        if (persist_selection) {
+            document.addEventListener("selectionchange", handleSelection);
+            list_container.addEventListener("mousedown", clearSelection);
+        } else {
+            document.removeEventListener("selectionchange", handleSelection);
+            list_container.removeEventListener("mousedown", clearSelection);
+            saved_sel.text = "";
+        }
+    });
 
     onMount(() => {
         container = list_container;
