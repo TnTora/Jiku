@@ -13,6 +13,8 @@ The recommended installation method is to use the docker-compose file. Running a
 1. Install [Docker](https://docs.docker.com/get-started/get-docker/)
 2. Download the `docker-compose.yaml` file from the [releases page](https://github.com/TnTora/Jiku/releases)
 3. Run the following command (substituting `<path-to-yaml-file>` with the actual path to the downloaded file) and wait for the installation to complete
+
+If you are using Docker Desktop, make sure it is open before running the command.
 ```
 docker compose -f <path-to-yaml-file> -p jiku up -d
 ```
@@ -21,7 +23,8 @@ Once the command finishes you can stop and start the app from Docker Desktop or 
 
 
 ## Update
-In order to update, run the following commands.
+In order to update, download the new docker-compose file if it was changed
+since your last update then run the following commands.
 The first one download the latest images. 
 The second recreate the containers.
 The last one remove all dangling images.
@@ -35,7 +38,8 @@ docker image prune -f
 ## Setup
 
 1. Make sure you have [Anki](https://apps.ankiweb.net/) and the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) plugin installed
-2. Config AnkiConnect if the default values do not work
+2. Config AnkiConnect if the default values do not work. If unable to connect to Anki, 
+try changing `webBindAddress` to `0.0.0.0`
 3. Open the jiku home page (by default `localhost:5173`), make sure `AnkiConnect PORT` matches the plugin setting and click connect
 4. Add the `Morphemes Sources` from which to extract the known words
 
